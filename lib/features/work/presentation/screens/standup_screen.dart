@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../theme/app_theme.dart';
-import '../services/storage_service.dart';
-import '../services/locale_service.dart';
-import '../services/claude_service.dart';
-import '../models/app_models.dart';
-import '../widgets/common_widgets.dart';
-import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../widgets/common_widgets.dart';
+import '../../domain/models/standup_log.dart';
+import '../viewmodels/standup_view_model.dart';
 
 class StandupScreen extends StatefulWidget {
   const StandupScreen({super.key});
@@ -16,20 +14,9 @@ class StandupScreen extends StatefulWidget {
 }
 
 class _StandupScreenState extends State<StandupScreen> {
-  final _storage = StorageService();
-  final _claude = ClaudeService();
   final _winsCtrl = TextEditingController();
   final _challengesCtrl = TextEditingController();
   final _prioritiesCtrl = TextEditingController();
-  bool _loading = false;
-  String? _aiResponse;
-  late List<StandupLog> _logs;
-
-  @override
-  void initState() {
-    super.initState();
-    _logs = _storage.getStandupLogs();
-  }
 
   @override
   void dispose() {
@@ -44,56 +31,34 @@ class _StandupScreenState extends State<StandupScreen> {
       _challengesCtrl.text.trim().isNotEmpty ||
       _prioritiesCtrl.text.trim().isNotEmpty;
 
-  Future<void> _submit() async {
+  Future<void> _submit(StandupViewModel vm) async {
     if (!_hasFilledIn) return;
-    setState(() {
-      _loading = true;
-      _aiResponse = null;
-    });
-
-    final aiResp = await _claude.analyzeStandup(
-      wins: _winsCtrl.text.trim(),
-      challenges: _challengesCtrl.text.trim(),
-      priorities: _prioritiesCtrl.text.trim(),
+    await vm.submit(
+      wins: _winsCtrl.text,
+      challenges: _challengesCtrl.text,
+      priorities: _prioritiesCtrl.text,
     );
-
-    final log = StandupLog(
-      id: const Uuid().v4(),
-      wins: _winsCtrl.text.trim(),
-      challenges: _challengesCtrl.text.trim(),
-      priorities: _prioritiesCtrl.text.trim(),
-      aiResponse: aiResp,
-    );
-
-    final logs = _storage.getStandupLogs()..insert(0, log);
-    await _storage.saveStandupLogs(logs);
-
-    if (mounted) {
-      setState(() {
-        _loading = false;
-        _aiResponse = aiResp;
-        _logs = _storage.getStandupLogs();
-      });
-    }
   }
 
-  void _clear() {
+  void _clear(StandupViewModel vm) {
     _winsCtrl.clear();
     _challengesCtrl.clear();
     _prioritiesCtrl.clear();
-    setState(() => _aiResponse = null);
+    vm.clearResponse();
   }
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<StandupViewModel>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Daily Standup'),
         actions: [
-          if (_aiResponse != null)
+          if (vm.aiResponse != null)
             TextButton(
-              onPressed: _clear,
+              onPressed: () => _clear(vm),
               child: const Text('New', style: TextStyle(color: AppColors.primary)),
             ),
         ],
@@ -103,7 +68,6 @@ class _StandupScreenState extends State<StandupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Date header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -125,8 +89,7 @@ class _StandupScreenState extends State<StandupScreen> {
             ),
             const SizedBox(height: 20),
 
-            if (_aiResponse == null) ...[
-              // Input form
+            if (vm.aiResponse == null) ...[
               _StandupField(
                 controller: _winsCtrl,
                 emoji: '✅',
@@ -152,13 +115,13 @@ class _StandupScreenState extends State<StandupScreen> {
               ),
               const SizedBox(height: 24),
 
-              if (_loading)
+              if (vm.loading)
                 const Center(child: AiThinkingWidget(message: 'AI is analyzing your standup...'))
               else
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: _hasFilledIn ? _submit : null,
+                    onPressed: _hasFilledIn ? () => _submit(vm) : null,
                     icon: const Icon(Icons.auto_awesome, size: 18),
                     label: const Text(
                       'Submit & Get AI Analysis',
@@ -170,7 +133,6 @@ class _StandupScreenState extends State<StandupScreen> {
                   ),
                 ),
             ] else ...[
-              // AI Response
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -186,11 +148,11 @@ class _StandupScreenState extends State<StandupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        const Icon(Icons.auto_awesome, color: AppColors.primaryLight, size: 16),
-                        const SizedBox(width: 8),
-                        const Text(
+                        Icon(Icons.auto_awesome, color: AppColors.primaryLight, size: 16),
+                        SizedBox(width: 8),
+                        Text(
                           'AI Executive Analysis',
                           style: TextStyle(
                             color: AppColors.primaryLight,
@@ -202,7 +164,7 @@ class _StandupScreenState extends State<StandupScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      _aiResponse!,
+                      vm.aiResponse!,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 13,
@@ -214,7 +176,6 @@ class _StandupScreenState extends State<StandupScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Your inputs summary
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,8 +200,7 @@ class _StandupScreenState extends State<StandupScreen> {
               ),
             ],
 
-            // Past logs
-            if (_logs.isNotEmpty) ...[
+            if (vm.logs.isNotEmpty) ...[
               const SizedBox(height: 28),
               const Text(
                 'History',
@@ -251,7 +211,7 @@ class _StandupScreenState extends State<StandupScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              ..._logs.take(5).map((log) => _LogHistoryCard(log: log)),
+              ...vm.logs.take(5).map((log) => _LogHistoryCard(log: log)),
             ],
           ],
         ),

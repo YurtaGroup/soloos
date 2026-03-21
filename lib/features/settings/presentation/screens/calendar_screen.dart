@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../theme/app_theme.dart';
-import '../services/google_calendar_service.dart';
-import '../services/locale_service.dart';
-import '../widgets/common_widgets.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../services/google_calendar_service.dart';
+import '../../../../services/locale_service.dart';
+import '../../../../widgets/common_widgets.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});

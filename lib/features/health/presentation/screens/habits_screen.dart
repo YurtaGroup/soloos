@@ -1,46 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../theme/app_theme.dart';
-import '../services/storage_service.dart';
-import '../services/locale_service.dart';
-import '../models/app_models.dart';
-import '../widgets/common_widgets.dart';
-import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../widgets/common_widgets.dart';
+import '../../domain/models/habit.dart';
+import '../viewmodels/habits_view_model.dart';
 
-class HabitsScreen extends StatefulWidget {
+class HabitsScreen extends StatelessWidget {
   const HabitsScreen({super.key});
 
-  @override
-  State<HabitsScreen> createState() => _HabitsScreenState();
-}
-
-class _HabitsScreenState extends State<HabitsScreen> {
-  final _storage = StorageService();
-  late List<Habit> _habits;
-
-  @override
-  void initState() {
-    super.initState();
-    _habits = _storage.getHabits();
-  }
-
-  void _reload() => setState(() => _habits = _storage.getHabits());
-
-  Future<void> _toggleHabit(Habit habit) async {
-    final today = DateTime.now();
-    final alreadyDone = habit.isCompletedToday();
-    if (alreadyDone) {
-      habit.completedDates.removeWhere(
-        (d) => d.year == today.year && d.month == today.month && d.day == today.day,
-      );
-    } else {
-      habit.completedDates.add(today);
-    }
-    await _storage.saveHabits(_habits);
-    _reload();
-  }
-
-  Future<void> _addHabit() async {
+  Future<void> _showAddDialog(BuildContext context, HabitsViewModel vm) async {
     final nameCtrl = TextEditingController();
     String emoji = '✅';
     await showModalBottomSheet(
@@ -118,16 +86,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    final habits = _storage.getHabits()
-                      ..add(Habit(
-                        id: const Uuid().v4(),
-                        name: nameCtrl.text.trim(),
-                        emoji: emoji,
-                      ));
-                    await _storage.saveHabits(habits);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    _reload();
+                    final added = await vm.addHabit(
+                      name: nameCtrl.text,
+                      emoji: emoji,
+                    );
+                    if (added && ctx.mounted) Navigator.pop(ctx);
                   },
                   child: const Text('Add Habit'),
                 ),
@@ -141,8 +104,10 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final completedToday = _habits.where((h) => h.isCompletedToday()).length;
-    final maxStreak = _habits.isEmpty ? 0 : _habits.map((h) => h.currentStreak).reduce((a, b) => a > b ? a : b);
+    final vm = context.watch<HabitsViewModel>();
+    final habits = vm.habits;
+    final completedToday = vm.completedToday;
+    final maxStreak = vm.maxStreak;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -151,27 +116,26 @@ class _HabitsScreenState extends State<HabitsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: AppColors.healthColor),
-            onPressed: _addHabit,
+            onPressed: () => _showAddDialog(context, vm),
           ),
         ],
       ),
-      body: _habits.isEmpty
+      body: habits.isEmpty
           ? EmptyState(
               emoji: '💪',
               title: 'No habits yet',
               subtitle: 'Build powerful daily routines.\nConsistency is your superpower.',
-              onAction: _addHabit,
+              onAction: () => _showAddDialog(context, vm),
               actionLabel: '+ Add Habit',
             )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Stats header
                 Row(
                   children: [
                     Expanded(
                       child: StatChip(
-                        value: '$completedToday/${_habits.length}',
+                        value: '$completedToday/${habits.length}',
                         label: 'Today',
                         color: AppColors.healthColor,
                       ),
@@ -187,29 +151,23 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: StatChip(
-                        value: completedToday == _habits.length && _habits.isNotEmpty ? '🔥' : '📊',
-                        label: completedToday == _habits.length ? 'Perfect!' : 'Keep going',
+                        value: completedToday == habits.length && habits.isNotEmpty ? '🔥' : '📊',
+                        label: completedToday == habits.length ? 'Perfect!' : 'Keep going',
                         color: AppColors.primaryLight,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-
-                // Habit cards
-                ..._habits.map((habit) => _HabitCard(
+                ...habits.map((habit) => _HabitCard(
                       habit: habit,
-                      onToggle: () => _toggleHabit(habit),
-                      onDelete: () async {
-                        _habits.remove(habit);
-                        await _storage.saveHabits(_habits);
-                        _reload();
-                      },
+                      onToggle: () => vm.toggleHabit(habit),
+                      onDelete: () => vm.deleteHabit(habit),
                     )),
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addHabit,
+        onPressed: () => _showAddDialog(context, vm),
         backgroundColor: AppColors.healthColor,
         child: const Icon(Icons.add),
       ),
@@ -296,7 +254,6 @@ class _HabitCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Mini calendar (last 7 days)
               _MiniCalendar(habit: habit),
               const SizedBox(width: 10),
               Container(

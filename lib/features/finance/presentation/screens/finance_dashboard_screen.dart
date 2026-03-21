@@ -17,6 +17,11 @@ class FinanceDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showManualAddSheet(context),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -47,6 +52,51 @@ class FinanceDashboardScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  void _showManualAddSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ManualTypePickerSheet(
+        onDebt: () {
+          Navigator.pop(context);
+          _showManualDebtForm(context);
+        },
+        onObligation: () {
+          Navigator.pop(context);
+          _showManualObligationForm(context);
+        },
+      ),
+    );
+  }
+
+  void _showManualDebtForm(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ManualDebtForm(
+        onSave: (debt) {
+          context.read<FinanceViewModel>().addDebt(debt);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  void _showManualObligationForm(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ManualObligationForm(
+        onSave: (obligation) {
+          context.read<FinanceViewModel>().addObligation(obligation);
+          Navigator.pop(context);
+        },
       ),
     );
   }
@@ -577,6 +627,537 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+
+// ── Manual add type picker ───────────────────────────────────────────────────
+
+class _ManualTypePickerSheet extends StatelessWidget {
+  final VoidCallback onDebt;
+  final VoidCallback onObligation;
+  const _ManualTypePickerSheet(
+      {required this.onDebt, required this.onObligation});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          20, 16, 20, MediaQuery.of(context).padding.bottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+                color: AppColors.textMuted,
+                borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(height: 16),
+          const Text('Add to Finance',
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _TypeButton(
+                  icon: '💳',
+                  label: 'Debt',
+                  subtitle: 'I owe someone money',
+                  color: AppColors.accentRed,
+                  onTap: onDebt,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _TypeButton(
+                  icon: '📋',
+                  label: 'Obligation',
+                  subtitle: 'Recurring payment',
+                  color: AppColors.accentBlue,
+                  onTap: onObligation,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypeButton extends StatelessWidget {
+  final String icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  const _TypeButton(
+      {required this.icon,
+      required this.label,
+      required this.subtitle,
+      required this.color,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 28)),
+            const SizedBox(height: 8),
+            Text(label,
+                style: TextStyle(
+                    color: color,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(subtitle,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 11),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Manual debt form ─────────────────────────────────────────────────────────
+
+class _ManualDebtForm extends StatefulWidget {
+  final void Function(DebtItem) onSave;
+  const _ManualDebtForm({required this.onSave});
+
+  @override
+  State<_ManualDebtForm> createState() => _ManualDebtFormState();
+}
+
+class _ManualDebtFormState extends State<_ManualDebtForm> {
+  final _titleCtrl = TextEditingController();
+  final _creditorCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  DebtCategory _category = DebtCategory.other;
+  DebtPriority _priority = DebtPriority.medium;
+  String _currency = 'USD';
+  DateTime? _dueDate;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _creditorCtrl.dispose();
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final title = _titleCtrl.text.trim();
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    if (title.isEmpty || amount <= 0) return;
+    widget.onSave(DebtItem(
+      title: title,
+      creditorName: _creditorCtrl.text.trim(),
+      category: _category,
+      originalAmount: amount,
+      currency: _currency,
+      dueDate: _dueDate,
+      priority: _priority,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+            20, 16, 20, MediaQuery.of(context).padding.bottom + 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                      color: AppColors.textMuted,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const Text('💳 Add Debt',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 16),
+              _label('Title *'),
+              TextField(
+                controller: _titleCtrl,
+                autofocus: true,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration:
+                    const InputDecoration(hintText: 'e.g. Student Loan'),
+              ),
+              const SizedBox(height: 12),
+              _label('Creditor / Who you owe'),
+              TextField(
+                controller: _creditorCtrl,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(hintText: 'e.g. Bank, John'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('Amount *'),
+                        TextField(
+                          controller: _amountCtrl,
+                          keyboardType: TextInputType.number,
+                          style:
+                              const TextStyle(color: AppColors.textPrimary),
+                          decoration:
+                              const InputDecoration(hintText: '0'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _label('Currency'),
+                      DropdownButton<String>(
+                        value: _currency,
+                        dropdownColor: AppColors.card,
+                        style: const TextStyle(
+                            color: AppColors.textPrimary, fontSize: 14),
+                        underline: const SizedBox(),
+                        items: ['USD', 'KGS'].map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c),
+                            )).toList(),
+                        onChanged: (v) =>
+                            setState(() => _currency = v ?? 'USD'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _label('Category'),
+              DropdownButtonFormField<DebtCategory>(
+                value: _category,
+                decoration: const InputDecoration(isDense: true),
+                dropdownColor: AppColors.card,
+                style:
+                    const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                items: DebtCategory.values
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text('${c.emoji} ${c.label}'),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _category = v ?? _category),
+              ),
+              const SizedBox(height: 12),
+              _label('Priority'),
+              Row(
+                children: DebtPriority.values.map((p) {
+                  final selected = _priority == p;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _priority = p),
+                      child: Container(
+                        margin: EdgeInsets.only(
+                            right: p != DebtPriority.high ? 8 : 0),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppColors.primary.withOpacity(0.2)
+                              : AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textMuted),
+                        ),
+                        child: Text(
+                          p.name[0].toUpperCase() + p.name.substring(1),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                              fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              _label('Due Date (optional)'),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().add(const Duration(days: 30)),
+                    firstDate: DateTime.now(),
+                    lastDate:
+                        DateTime.now().add(const Duration(days: 365 * 10)),
+                    builder: (ctx, child) => Theme(
+                      data: ThemeData.dark().copyWith(
+                        colorScheme: const ColorScheme.dark(
+                            primary: AppColors.primary),
+                      ),
+                      child: child!,
+                    ),
+                  );
+                  if (picked != null) setState(() => _dueDate = picked);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.textMuted),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today,
+                          size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Text(
+                        _dueDate != null
+                            ? '${_dueDate!.month}/${_dueDate!.day}/${_dueDate!.year}'
+                            : 'Set due date',
+                        style: TextStyle(
+                            color: _dueDate != null
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
+                            fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Save Debt'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Manual obligation form ───────────────────────────────────────────────────
+
+class _ManualObligationForm extends StatefulWidget {
+  final void Function(ObligationItem) onSave;
+  const _ManualObligationForm({required this.onSave});
+
+  @override
+  State<_ManualObligationForm> createState() => _ManualObligationFormState();
+}
+
+class _ManualObligationFormState extends State<_ManualObligationForm> {
+  final _titleCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  ObligationCategory _category = ObligationCategory.other;
+  ObligationFrequency _frequency = ObligationFrequency.monthly;
+  String _currency = 'USD';
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final title = _titleCtrl.text.trim();
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    if (title.isEmpty || amount <= 0) return;
+    widget.onSave(ObligationItem(
+      title: title,
+      category: _category,
+      amount: amount,
+      currency: _currency,
+      frequency: _frequency,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+            20, 16, 20, MediaQuery.of(context).padding.bottom + 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                      color: AppColors.textMuted,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const Text('📋 Add Obligation',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 16),
+              _label('Title *'),
+              TextField(
+                controller: _titleCtrl,
+                autofocus: true,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration:
+                    const InputDecoration(hintText: 'e.g. Spotify, Rent'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('Amount *'),
+                        TextField(
+                          controller: _amountCtrl,
+                          keyboardType: TextInputType.number,
+                          style:
+                              const TextStyle(color: AppColors.textPrimary),
+                          decoration:
+                              const InputDecoration(hintText: '0'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _label('Currency'),
+                      DropdownButton<String>(
+                        value: _currency,
+                        dropdownColor: AppColors.card,
+                        style: const TextStyle(
+                            color: AppColors.textPrimary, fontSize: 14),
+                        underline: const SizedBox(),
+                        items: ['USD', 'KGS'].map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c),
+                            )).toList(),
+                        onChanged: (v) =>
+                            setState(() => _currency = v ?? 'USD'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _label('Category'),
+              DropdownButtonFormField<ObligationCategory>(
+                value: _category,
+                decoration: const InputDecoration(isDense: true),
+                dropdownColor: AppColors.card,
+                style:
+                    const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                items: ObligationCategory.values
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text('${c.emoji} ${c.label}'),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _category = v ?? _category),
+              ),
+              const SizedBox(height: 12),
+              _label('Frequency'),
+              DropdownButtonFormField<ObligationFrequency>(
+                value: _frequency,
+                decoration: const InputDecoration(isDense: true),
+                dropdownColor: AppColors.card,
+                style:
+                    const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                items: ObligationFrequency.values
+                    .map((f) => DropdownMenuItem(
+                          value: f,
+                          child: Text(f.label),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _frequency = v ?? _frequency),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Save Obligation'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Widget _label(String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(text,
+          style: const TextStyle(
+              color: AppColors.textSecondary, fontSize: 12)),
+    );
 
 String _fmt(double v) {
   if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';

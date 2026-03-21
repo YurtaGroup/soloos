@@ -1,70 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../theme/app_theme.dart';
-import '../services/storage_service.dart';
-import '../services/locale_service.dart';
-import '../services/google_calendar_service.dart';
-import '../models/app_models.dart';
-import '../widgets/common_widgets.dart';
-import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../services/locale_service.dart';
+import '../../../../widgets/common_widgets.dart';
+import '../../domain/models/contact.dart';
+import '../viewmodels/contacts_view_model.dart';
 
-class ContactsScreen extends StatefulWidget {
+class ContactsScreen extends StatelessWidget {
   const ContactsScreen({super.key});
 
-  @override
-  State<ContactsScreen> createState() => _ContactsScreenState();
-}
+  void _snack(BuildContext context, String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-class _ContactsScreenState extends State<ContactsScreen> {
-  final _storage = StorageService();
-  final _calService = GoogleCalendarService();
-  late List<Contact> _contacts;
-  bool _importing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _reload();
-  }
-
-  void _reload() {
-    setState(() {
-      _contacts = _storage.getContacts()
-        ..sort((a, b) => a.daysUntilBirthday.compareTo(b.daysUntilBirthday));
-    });
-  }
-
-  // ── Import from Google Contacts ───────────────────────────────
-  Future<void> _importFromGoogle() async {
-    if (!_calService.isSignedIn) {
-      _snack(ls.t('connect_google'));
-      return;
-    }
-    setState(() => _importing = true);
-    final imported = await _calService.importBirthdays();
-    if (imported.isEmpty) {
-      setState(() => _importing = false);
-      _snack('No birthdays found in Google Contacts');
-      return;
-    }
-
-    final existing = _storage.getContacts();
-    final existingNames = existing.map((c) => c.name.toLowerCase()).toSet();
-    int added = 0;
-    for (final c in imported) {
-      if (!existingNames.contains(c.name.toLowerCase())) {
-        existing.add(c);
-        added++;
-      }
-    }
-    await _storage.saveContacts(existing);
-    setState(() => _importing = false);
-    _reload();
-    _snack('Imported $added new contacts from Google');
-  }
-
-  // ── Quick Add Birthday (name + date only) ─────────────────────
-  Future<void> _quickAddBirthday() async {
+  Future<void> _quickAddBirthday(BuildContext context, ContactsViewModel vm) async {
     final nameCtrl = TextEditingController();
     DateTime birthday = DateTime(1990, 6, 15);
     String emoji = '🎂';
@@ -194,18 +143,12 @@ class _ContactsScreenState extends State<ContactsScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: () async {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    final contacts = _storage.getContacts()
-                      ..add(Contact(
-                        id: const Uuid().v4(),
-                        name: nameCtrl.text.trim(),
-                        emoji: emoji,
-                        birthday: birthday,
-                        relationship: 'friend',
-                      ));
-                    await _storage.saveContacts(contacts);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    _reload();
+                    final added = await vm.addContact(
+                      name: nameCtrl.text,
+                      emoji: emoji,
+                      birthday: birthday,
+                    );
+                    if (added && ctx.mounted) Navigator.pop(ctx);
                   },
                   child: Text(ls.t('add_contact_btn')),
                 ),
@@ -217,8 +160,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     );
   }
 
-  // ── Full Add Contact ──────────────────────────────────────────
-  Future<void> _addFullContact() async {
+  Future<void> _addFullContact(BuildContext context, ContactsViewModel vm) async {
     final nameCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
     String emoji = '👤';
@@ -363,19 +305,14 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
-                      if (nameCtrl.text.trim().isEmpty) return;
-                      final contacts = _storage.getContacts()
-                        ..add(Contact(
-                          id: const Uuid().v4(),
-                          name: nameCtrl.text.trim(),
-                          emoji: emoji,
-                          birthday: birthday,
-                          relationship: relationship,
-                          notes: notesCtrl.text.trim(),
-                        ));
-                      await _storage.saveContacts(contacts);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      _reload();
+                      final added = await vm.addContact(
+                        name: nameCtrl.text,
+                        emoji: emoji,
+                        birthday: birthday,
+                        relationship: relationship,
+                        notes: notesCtrl.text,
+                      );
+                      if (added && ctx.mounted) Navigator.pop(ctx);
                     },
                     child: Text(ls.t('add_contact_btn')),
                   ),
@@ -388,21 +325,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
     );
   }
 
-  void _snack(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
   @override
   Widget build(BuildContext context) {
-    final upcoming = _contacts.where((c) => c.daysUntilBirthday <= 30).toList();
-    final rest = _contacts.where((c) => c.daysUntilBirthday > 30).toList();
+    final vm = context.watch<ContactsViewModel>();
+    final upcoming = vm.upcoming;
+    final rest = vm.rest;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(ls.t('contacts_title')),
         actions: [
-          if (_calService.isSignedIn)
-            _importing
+          if (vm.isGoogleSignedIn)
+            vm.importing
                 ? const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: SizedBox(
@@ -414,25 +349,32 @@ class _ContactsScreenState extends State<ContactsScreen> {
                 : IconButton(
                     icon: const Icon(Icons.download_rounded, color: AppColors.accentBlue),
                     tooltip: 'Import from Google',
-                    onPressed: _importFromGoogle,
+                    onPressed: () async {
+                      final msg = await vm.importFromGoogle();
+                      if (context.mounted) _snack(context, msg);
+                    },
                   ),
           IconButton(
             icon: const Icon(Icons.person_add_outlined, color: AppColors.accentRed),
-            onPressed: _addFullContact,
+            onPressed: () => _addFullContact(context, vm),
           ),
         ],
       ),
       body: Column(
         children: [
-          // ── Google import banner ─────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: _calService.isSignedIn
+            child: vm.isGoogleSignedIn
                 ? SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: _importing ? null : _importFromGoogle,
-                      icon: _importing
+                      onPressed: vm.importing
+                          ? null
+                          : () async {
+                              final msg = await vm.importFromGoogle();
+                              if (context.mounted) _snack(context, msg);
+                            },
+                      icon: vm.importing
                           ? const SizedBox(
                               width: 14, height: 14,
                               child: CircularProgressIndicator(
@@ -471,15 +413,13 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   ),
           ),
           const SizedBox(height: 4),
-
-          // ── List ─────────────────────────────────────────────
           Expanded(
-            child: _contacts.isEmpty
+            child: vm.contacts.isEmpty
                 ? EmptyState(
                     emoji: '🎂',
                     title: ls.t('no_contacts'),
                     subtitle: ls.t('no_contacts_sub'),
-                    onAction: _quickAddBirthday,
+                    onAction: () => _quickAddBirthday(context, vm),
                     actionLabel: ls.t('add_contact_btn'),
                   )
                 : ListView(
@@ -495,11 +435,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                         const SizedBox(height: 10),
                         ...upcoming.map((c) => _ContactCard(
                               contact: c,
-                              onDelete: () async {
-                                _contacts.remove(c);
-                                await _storage.saveContacts(_contacts);
-                                _reload();
-                              },
+                              onDelete: () => vm.deleteContact(c),
                             )),
                         const SizedBox(height: 16),
                       ],
@@ -513,11 +449,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                         const SizedBox(height: 10),
                         ...rest.map((c) => _ContactCard(
                               contact: c,
-                              onDelete: () async {
-                                _contacts.remove(c);
-                                await _storage.saveContacts(_contacts);
-                                _reload();
-                              },
+                              onDelete: () => vm.deleteContact(c),
                             )),
                       ],
                     ],
@@ -531,7 +463,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         children: [
           FloatingActionButton.small(
             heroTag: 'quick',
-            onPressed: _quickAddBirthday,
+            onPressed: () => _quickAddBirthday(context, vm),
             backgroundColor: AppColors.surface,
             child: const Icon(Icons.flash_on_rounded,
                 color: AppColors.accent, size: 18),
@@ -539,7 +471,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
           const SizedBox(height: 10),
           FloatingActionButton(
             heroTag: 'full',
-            onPressed: _addFullContact,
+            onPressed: () => _addFullContact(context, vm),
             backgroundColor: AppColors.accentRed,
             child: const Icon(Icons.person_add_outlined),
           ),
@@ -549,7 +481,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
 class _ContactCard extends StatelessWidget {
   final Contact contact;
   final VoidCallback onDelete;

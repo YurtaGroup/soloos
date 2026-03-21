@@ -11,8 +11,12 @@ import 'features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
 import 'features/finance/presentation/viewmodels/finance_view_model.dart';
 import 'features/family/presentation/viewmodels/family_viewmodel.dart';
 import 'features/gamification/presentation/viewmodels/gamification_viewmodel.dart';
-import 'screens/onboarding_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'features/health/presentation/viewmodels/habits_view_model.dart';
+import 'features/work/presentation/viewmodels/projects_view_model.dart';
+import 'features/work/presentation/viewmodels/standup_view_model.dart';
+import 'features/family/presentation/viewmodels/contacts_view_model.dart';
+import 'features/home/presentation/screens/onboarding_screen.dart';
+import 'features/home/presentation/screens/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +42,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => FinanceViewModel()),
         ChangeNotifierProvider(create: (_) => FamilyViewModel()),
         ChangeNotifierProvider(create: (_) => GamificationViewModel()),
+        ChangeNotifierProvider(create: (_) => HabitsViewModel()),
+        ChangeNotifierProvider(create: (_) => ProjectsViewModel()),
+        ChangeNotifierProvider(create: (_) => StandupViewModel()),
+        ChangeNotifierProvider(create: (_) => ContactsViewModel()),
       ],
       child: SoloOSApp(isOnboarded: storage.onboardingDone),
     ),

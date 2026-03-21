@@ -1,33 +1,15 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../services/storage_service.dart';
-import '../services/locale_service.dart';
-import '../models/app_models.dart';
-import '../widgets/common_widgets.dart';
-import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../widgets/common_widgets.dart';
+import '../../domain/models/project.dart';
+import '../../domain/models/task.dart';
+import '../viewmodels/projects_view_model.dart';
 
-class ProjectsScreen extends StatefulWidget {
+class ProjectsScreen extends StatelessWidget {
   const ProjectsScreen({super.key});
 
-  @override
-  State<ProjectsScreen> createState() => _ProjectsScreenState();
-}
-
-class _ProjectsScreenState extends State<ProjectsScreen> {
-  final _storage = StorageService();
-  late List<Project> _projects;
-
-  @override
-  void initState() {
-    super.initState();
-    _projects = _storage.getProjects();
-  }
-
-  void _reload() {
-    setState(() => _projects = _storage.getProjects());
-  }
-
-  Future<void> _addProject() async {
+  Future<void> _showAddDialog(BuildContext context, ProjectsViewModel vm) async {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     await showModalBottomSheet(
@@ -60,33 +42,24 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 controller: nameCtrl,
                 autofocus: true,
                 style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(
-                  hintText: 'Project name',
-                ),
+                decoration: const InputDecoration(hintText: 'Project name'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: descCtrl,
                 style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(
-                  hintText: 'Description (optional)',
-                ),
+                decoration: const InputDecoration(hintText: 'Description (optional)'),
               ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    final p = Project(
-                      id: const Uuid().v4(),
-                      name: nameCtrl.text.trim(),
-                      description: descCtrl.text.trim(),
+                    final added = await vm.addProject(
+                      name: nameCtrl.text,
+                      description: descCtrl.text,
                     );
-                    final projects = _storage.getProjects()..add(p);
-                    await _storage.saveProjects(projects);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    _reload();
+                    if (added && ctx.mounted) Navigator.pop(ctx);
                   },
                   child: const Text('Create Project'),
                 ),
@@ -100,6 +73,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<ProjectsViewModel>();
+    final projects = vm.projects;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -107,36 +83,28 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: AppColors.workColor),
-            onPressed: _addProject,
+            onPressed: () => _showAddDialog(context, vm),
           ),
         ],
       ),
-      body: _projects.isEmpty
+      body: projects.isEmpty
           ? EmptyState(
               emoji: '📋',
               title: 'No projects yet',
               subtitle: 'Create your first project\nand start tracking tasks.',
-              onAction: _addProject,
+              onAction: () => _showAddDialog(context, vm),
               actionLabel: '+ New Project',
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _projects.length,
+              itemCount: projects.length,
               itemBuilder: (ctx, i) => _ProjectCard(
-                project: _projects[i],
-                onUpdate: () async {
-                  await _storage.saveProjects(_projects);
-                  _reload();
-                },
-                onDelete: () async {
-                  _projects.removeAt(i);
-                  await _storage.saveProjects(_projects);
-                  _reload();
-                },
+                project: projects[i],
+                onDelete: () => vm.deleteProject(i),
               ),
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addProject,
+        onPressed: () => _showAddDialog(context, vm),
         child: const Icon(Icons.add),
       ),
     );
@@ -145,12 +113,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
 class _ProjectCard extends StatefulWidget {
   final Project project;
-  final VoidCallback onUpdate;
   final VoidCallback onDelete;
 
   const _ProjectCard({
     required this.project,
-    required this.onUpdate,
     required this.onDelete,
   });
 
@@ -161,7 +127,7 @@ class _ProjectCard extends StatefulWidget {
 class _ProjectCardState extends State<_ProjectCard> {
   bool _expanded = false;
 
-  Future<void> _addTask() async {
+  Future<void> _addTask(ProjectsViewModel vm) async {
     final ctrl = TextEditingController();
     String priority = 'medium';
     await showModalBottomSheet(
@@ -245,12 +211,8 @@ class _ProjectCardState extends State<_ProjectCard> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (ctrl.text.trim().isEmpty) return;
-                    widget.project.tasks.add(Task(
-                      id: const Uuid().v4(),
-                      title: ctrl.text.trim(),
-                      priority: priority,
-                    ));
-                    widget.onUpdate();
+                    vm.addTask(widget.project,
+                        title: ctrl.text, priority: priority);
                     Navigator.pop(ctx);
                   },
                   child: const Text('Add Task'),
@@ -265,6 +227,7 @@ class _ProjectCardState extends State<_ProjectCard> {
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<ProjectsViewModel>();
     final p = widget.project;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -275,7 +238,6 @@ class _ProjectCardState extends State<_ProjectCard> {
       ),
       child: Column(
         children: [
-          // Header
           GestureDetector(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
@@ -288,7 +250,7 @@ class _ProjectCardState extends State<_ProjectCard> {
                       Container(
                         width: 10,
                         height: 10,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: AppColors.workColor,
                           shape: BoxShape.circle,
                         ),
@@ -331,27 +293,23 @@ class _ProjectCardState extends State<_ProjectCard> {
               ),
             ),
           ),
-
-          // Tasks
           if (_expanded) ...[
             const Divider(height: 1, color: Color(0xFF252535)),
             ...p.tasks.map((task) => _TaskTile(
                   task: task,
                   onToggle: () {
-                    task.isDone = !task.isDone;
-                    widget.onUpdate();
+                    vm.toggleTask(task);
                     setState(() {});
                   },
                   onDelete: () {
-                    p.tasks.remove(task);
-                    widget.onUpdate();
+                    vm.deleteTask(p, task);
                     setState(() {});
                   },
                 )),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextButton.icon(
-                onPressed: _addTask,
+                onPressed: () => _addTask(vm),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add task'),
                 style: TextButton.styleFrom(foregroundColor: AppColors.workColor),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
-import '../services/locale_service.dart';
-import '../models/app_models.dart';
-import '../widgets/common_widgets.dart';
-import '../features/ideas/presentation/viewmodels/ideas_view_model.dart';
-import '../shared/widgets/app_bottom_sheet.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../models/app_models.dart';
+import '../../../../widgets/common_widgets.dart';
+import '../viewmodels/ideas_view_model.dart';
+import '../../../../shared/widgets/app_bottom_sheet.dart';
 
 class IdeasScreen extends StatefulWidget {
   const IdeasScreen({super.key});

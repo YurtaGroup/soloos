@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../theme/app_theme.dart';
-import '../services/storage_service.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../services/storage_service.dart';
 import 'dashboard_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {

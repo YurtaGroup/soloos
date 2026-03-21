@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
-import '../services/storage_service.dart';
-import '../services/locale_service.dart';
-import '../widgets/common_widgets.dart';
-import '../core/utils/stats_calculator.dart';
-import '../features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
-import 'projects_screen.dart';
-import 'habits_screen.dart';
-import '../features/finance/presentation/screens/finance_dashboard_screen.dart';
-import '../features/family/presentation/screens/family_dashboard_screen.dart';
-import '../features/gamification/presentation/screens/gamification_dashboard_screen.dart';
-import 'ideas_screen.dart';
-import 'standup_screen.dart';
-import 'contacts_screen.dart';
-import 'settings_screen.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../services/storage_service.dart';
+import '../../../../services/locale_service.dart';
+import '../../../../widgets/common_widgets.dart';
+import '../../../../core/utils/stats_calculator.dart';
+import '../../../dashboard/presentation/viewmodels/dashboard_view_model.dart';
+import '../../../work/presentation/screens/projects_screen.dart';
+import '../../../health/presentation/screens/habits_screen.dart';
+import '../../../finance/presentation/screens/finance_dashboard_screen.dart';
+import '../../../family/presentation/screens/family_dashboard_screen.dart';
+import '../../../gamification/presentation/screens/gamification_dashboard_screen.dart';
+import '../../../ideas/presentation/screens/ideas_screen.dart';
+import '../../../work/presentation/screens/standup_screen.dart';
+import '../../../family/presentation/screens/contacts_screen.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
