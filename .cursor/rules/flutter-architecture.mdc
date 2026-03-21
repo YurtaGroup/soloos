@@ -1,0 +1,209 @@
+---
+description: Flutter architecture rules for Solo OS. Enforces clean architecture, thin UI, and feature-based structure. Apply to all Dart files.
+globs: ["**/*.dart"]
+alwaysApply: true
+---
+
+# Solo OS — Flutter Architecture Rules
+
+## Core Principle
+**UI observes. ViewModels think. Services act. Repositories store.**
+No business logic in widgets. No storage calls in screens.
+
+---
+
+## 1. File Size Limits
+
+- Screens: max 200 lines
+- ViewModels: max 150 lines
+- Widgets: max 100 lines
+- Services/Repositories: max 150 lines
+
+If a file exceeds these limits → extract widgets, split logic, or introduce a ViewModel.
+
+---
+
+## 2. Feature Structure
+
+Every new feature MUST follow this layout:
+
+```
+lib/features/<feature_name>/
+  presentation/
+    screens/         ← StatelessWidget or minimal StatefulWidget
+    widgets/         ← extracted private widgets
+    viewmodels/      ← ChangeNotifier, business logic, state
+  data/
+    repositories/    ← abstracts storage + remote calls
+  domain/
+    models/          ← pure data classes (if feature-specific)
+```
+
+Shared/reused code goes in:
+```
+lib/core/
+  utils/             ← calculators, formatters, helpers
+  theme/             ← AppColors, AppTheme (already exists)
+
+lib/shared/
+  widgets/           ← reusable UI components (AppBottomSheet, DismissibleCard, etc.)
+  services/          ← cross-feature services (ClaudeService, StorageService)
+  models/            ← cross-feature models (app_models.dart)
+  l10n/              ← localization
+```
+
+---
+
+## 3. Screen Rules
+
+Screens are THIN. They:
+- Build layout from ViewModel state
+- Call ViewModel methods on user interaction
+- Do NOT call StorageService or ClaudeService directly
+- Do NOT contain `if/else` business logic
+- Do NOT compute derived values (sums, filters, counts)
+
+```dart
+// ✅ CORRECT
+class IdeasScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<IdeasViewModel>();
+    return Scaffold(
+      body: vm.isLoading ? const LoadingWidget() : IdeasList(ideas: vm.activeIdeas),
+      floatingActionButton: FloatingActionButton(onPressed: vm.showAddDialog),
+    );
+  }
+}
+
+// ❌ WRONG — business logic in screen
+class IdeasScreen extends StatefulWidget {
+  void _addIdea() async {
+    final ideas = _storage.getIdeas();
+    if (ideas.length >= 3) { ... } // ← this belongs in ViewModel
+  }
+}
+```
+
+---
+
+## 4. ViewModel Rules
+
+ViewModels are ChangeNotifiers that:
+- Hold all state for one screen
+- Call repositories for data
+- Call services (Claude, Calendar) for external operations
+- Expose clean `bool isLoading`, `String? error`, typed data getters
+- NEVER import Flutter widgets (no `package:flutter/widgets.dart` imports of UI)
+
+```dart
+// ✅ CORRECT
+class IdeasViewModel extends ChangeNotifier {
+  final StorageService _storage;
+  List<Idea> _ideas = [];
+  bool _isValidating = false;
+
+  List<Idea> get activeIdeas => _ideas.where((i) => i.status == IdeaStatus.active).toList();
+  bool get isValidating => _isValidating;
+
+  Future<void> validateIdea(Idea idea) async {
+    _isValidating = true;
+    notifyListeners();
+    // ... call ClaudeService, update idea, save
+    _isValidating = false;
+    notifyListeners();
+  }
+}
+```
+
+---
+
+## 5. Widget Extraction Rules
+
+Extract a widget when:
+- A widget tree is >30 lines
+- It appears more than once
+- It has its own meaningful name (e.g., IdeaCard, HabitRow, BirthdayTile)
+
+Private widgets (`_MyWidget`) are fine WITHIN the same file if small.
+Once a file exceeds 200 lines → the private widgets must move to `widgets/`.
+
+---
+
+## 6. Modal Bottom Sheet
+
+Always use the shared `AppBottomSheet.show()` helper:
+
+```dart
+// ✅ CORRECT
+AppBottomSheet.show(context, builder: (ctx) => AddIdeaForm(...));
+
+// ❌ WRONG — inline boilerplate
+showModalBottomSheet(
+  backgroundColor: AppColors.card,
+  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+  ...
+)
+```
+
+---
+
+## 7. Dismissible List Items
+
+Always use `DismissibleCard` widget:
+
+```dart
+// ✅ CORRECT
+DismissibleCard(id: item.id, onDelete: () => vm.delete(item), child: MyTile(...));
+
+// ❌ WRONG — inline Dismissible boilerplate
+Dismissible(key: Key(item.id), background: Container(alignment: Alignment.centerRight, ...), ...)
+```
+
+---
+
+## 8. Storage Access
+
+Screens and widgets NEVER call StorageService directly.
+Only ViewModels and Repositories access StorageService.
+
+---
+
+## 9. Localization
+
+All user-visible strings use `ls.t('key')`.
+No hardcoded English strings in widgets or screens.
+New keys must be added to ALL three languages (en, ru, ky) in app_strings.dart.
+
+---
+
+## 10. Naming Conventions
+
+| Type | Convention | Example |
+|---|---|---|
+| Screen | `<Feature>Screen` | `IdeasScreen` |
+| ViewModel | `<Feature>ViewModel` | `IdeasViewModel` |
+| Repository | `<Feature>Repository` | `IdeasRepository` |
+| Widget (private) | `_<Name>` | `_IdeaCard` |
+| Widget (shared) | `<Name>Widget` or `<Name>` | `DismissibleCard` |
+| Feature folder | snake_case | `features/ideas/` |
+
+---
+
+## 11. Migration Strategy
+
+This codebase is being migrated incrementally. Legacy files in `lib/screens/` are valid.
+New features → MUST use feature-based structure.
+Refactoring old features → MUST follow this guide.
+Do NOT break working screens while refactoring.
+
+---
+
+## 12. State Management
+
+We use **Provider + ChangeNotifier** (already in pubspec).
+- One ViewModel per screen/feature
+- Register in `main.dart` or the relevant widget tree via `ChangeNotifierProvider`
+- Consume with `context.watch<VM>()` or `context.read<VM>()`
+
+Do NOT introduce new state management libraries (Riverpod, Bloc) without team agreement.

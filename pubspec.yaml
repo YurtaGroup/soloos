@@ -1,0 +1,46 @@
+name: solo_os
+description: Solo OS - Operating System for Solopreneurs
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # HTTP & API
+  http: ^1.2.0
+
+  # Storage
+  shared_preferences: ^2.2.3
+
+  # UI & Fonts
+  google_fonts: ^6.2.1
+
+  # State Management
+  provider: ^6.1.2
+
+  # Utils
+  intl: ^0.20.2
+  uuid: ^4.4.0
+
+  # Google Calendar & Contacts
+  google_sign_in: ^6.2.0
+  googleapis: ^13.2.0
+  googleapis_auth: ^1.6.0
+  extension_google_sign_in_as_googleapis_auth: ^2.0.12
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/fonts/
