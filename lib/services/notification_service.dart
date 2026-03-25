@@ -3,6 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'storage_service.dart';
+import 'locale_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._();
@@ -16,6 +18,14 @@ class NotificationService {
   bool _initialized = false;
   bool _digestEnabled = false;
   bool get digestEnabled => _digestEnabled;
+
+  String get _userName {
+    try { return StorageService().userName; } catch (_) { return ''; }
+  }
+
+  LocaleService get _loc {
+    try { return LocaleService(); } catch (_) { return LocaleService(); }
+  }
 
   Future<void> init() async {
     if (_initialized) return;
@@ -78,23 +88,30 @@ class NotificationService {
   }
 
   Future<void> _scheduleDailyDigest() async {
-    const androidDetails = AndroidNotificationDetails(
+    final loc = _loc;
+    final name = _userName;
+    final channelName = loc.t('notif_channel_name');
+    final channelDesc = loc.t('notif_channel_desc');
+    final title = '☀️ ${loc.t('notif_morning_title', {'name': name})}';
+    final body = loc.t('notif_morning_body');
+
+    final androidDetails = AndroidNotificationDetails(
       'daily_digest',
-      'Daily Digest',
-      channelDescription: 'Morning summary of your day ahead',
+      channelName,
+      channelDescription: channelDesc,
       importance: Importance.high,
       priority: Priority.high,
     );
     const iosDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
 
     await _plugin.zonedSchedule(
       _dailyDigestId,
-      '☀️ Good morning, Timur',
-      'Check your daily digest — tasks, habits & finances waiting.',
+      title,
+      body,
       _nextInstanceOf8am(),
       details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

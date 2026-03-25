@@ -402,6 +402,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showUpgradeSheet() {
+    final pro = ProService();
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.card,
@@ -431,7 +432,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Monthly',
               price: '\$9.99/mo',
               isPopular: false,
-              onTap: () { Navigator.pop(ctx); _snack('Coming soon! You\'re on the early access list.'); },
+              onTap: () async {
+                Navigator.pop(ctx);
+                if (pro.revenueCatReady) {
+                  _snack('Processing purchase...');
+                  final ok = await pro.purchase(ProService.monthlyProductId);
+                  if (ok && mounted) {
+                    _snack('Welcome to Solo OS Pro!');
+                    setState(() {});
+                  } else if (mounted) {
+                    _snack('Purchase not completed.');
+                  }
+                } else {
+                  _snack('In-app purchases are being set up. Your trial continues!');
+                }
+              },
             ),
             const SizedBox(height: 10),
             _PricingTile(
@@ -439,15 +454,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
               price: '\$79.99/yr',
               subtitle: 'Save 33%',
               isPopular: true,
-              onTap: () { Navigator.pop(ctx); _snack('Coming soon! You\'re on the early access list.'); },
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Subscriptions coming soon. Your trial continues in the meantime.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-              textAlign: TextAlign.center,
+              onTap: () async {
+                Navigator.pop(ctx);
+                if (pro.revenueCatReady) {
+                  _snack('Processing purchase...');
+                  final ok = await pro.purchase(ProService.yearlyProductId);
+                  if (ok && mounted) {
+                    _snack('Welcome to Solo OS Pro!');
+                    setState(() {});
+                  } else if (mounted) {
+                    _snack('Purchase not completed.');
+                  }
+                } else {
+                  _snack('In-app purchases are being set up. Your trial continues!');
+                }
+              },
             ),
             const SizedBox(height: 16),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                _snack('Restoring purchases...');
+                final ok = await pro.restorePurchases();
+                if (mounted) {
+                  _snack(ok ? 'Pro restored!' : 'No previous purchases found.');
+                  setState(() {});
+                }
+              },
+              child: const Text('Restore Purchases',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),

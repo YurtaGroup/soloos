@@ -199,6 +199,12 @@ const Map<String, Map<String, String>> appStrings = {
     'reset_confirm_body': 'This will delete ALL your data. This cannot be undone.',
     'google_calendar_section': 'Google Calendar',
 
+    // Notifications
+    'notif_morning_title': 'Good morning, {name}',
+    'notif_morning_body': 'Check your daily digest — tasks, habits & finances waiting.',
+    'notif_channel_name': 'Daily Digest',
+    'notif_channel_desc': 'Morning summary of your day ahead',
+
     // Onboarding
     'welcome_title': 'Welcome to\nSolo OS',
     'welcome_sub': 'Your AI-powered operating system\nfor solopreneurs.',
@@ -386,6 +392,10 @@ const Map<String, Map<String, String>> appStrings = {
     'reset_confirm_title': 'Сбросить всё?',
     'reset_confirm_body': 'Это удалит ВСЕ ваши данные. Нельзя отменить.',
     'google_calendar_section': 'Google Календарь',
+    'notif_morning_title': 'Доброе утро, {name}',
+    'notif_morning_body': 'Проверьте ваш дайджест — задачи, привычки и финансы ждут.',
+    'notif_channel_name': 'Ежедневный дайджест',
+    'notif_channel_desc': 'Утреннее резюме вашего дня',
     'welcome_title': 'Добро пожаловать\nв Solo OS',
     'welcome_sub': 'Ваша AI-операционная система\nдля соlopreneurs.',
     'pareto_title': 'Делайте 20%.\nДостигайте 80%.',
@@ -572,6 +582,10 @@ const Map<String, Map<String, String>> appStrings = {
     'reset_confirm_title': 'Баарын тазалайсызбы?',
     'reset_confirm_body': 'Бул БАРДЫК дайындарыңызды өчүрөт. Кайтарып болбойт.',
     'google_calendar_section': 'Google Жылнаамасы',
+    'notif_morning_title': 'Кайырлуу таң, {name}',
+    'notif_morning_body': 'Дайджестти текшериңиз — тапшырмалар, адаттар жана каржы күтүп жатат.',
+    'notif_channel_name': 'Күнүмдүк дайджест',
+    'notif_channel_desc': 'Күнүңүздүн таңкы жыйынтыгы',
     'welcome_title': 'Solo OSка\nкош келиңиз',
     'welcome_sub': 'Соlopreneurлар үчүн\nAI менен иштөочү операциялык система.',
     'pareto_title': '20% жасаңыз.\n80% жетишиңиз.',
