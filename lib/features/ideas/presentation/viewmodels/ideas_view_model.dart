@@ -108,8 +108,20 @@ class IdeasViewModel extends ChangeNotifier {
     await _loadIdeas();
   }
 
+  /// Returns a limit string like 'limit:3:3' if blocked, or null if OK.
+  Future<String?> checkAiLimit() => _claude.checkAiLimit();
+
   Future<void> validateIdea(Idea idea) async {
     if (_validatingId != null) return;
+
+    // Check free-tier AI limit before calling
+    final limitCheck = await _claude.checkAiLimit();
+    if (limitCheck != null) {
+      _validatingId = null;
+      notifyListeners();
+      return;
+    }
+
     _validatingId = idea.id;
     notifyListeners();
 
@@ -134,6 +146,15 @@ class IdeasViewModel extends ChangeNotifier {
 
   Future<void> generateScript(Idea idea, String platform) async {
     if (_scriptingId != null) return;
+
+    // Check free-tier AI limit before calling
+    final limitCheck = await _claude.checkAiLimit();
+    if (limitCheck != null) {
+      _scriptingId = null;
+      notifyListeners();
+      return;
+    }
+
     _scriptingId = idea.id;
     notifyListeners();
 

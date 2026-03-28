@@ -50,6 +50,16 @@ class DashboardViewModel extends ChangeNotifier {
 
   Future<void> refresh() async {
     if (_storage.apiKey.isEmpty) return;
+
+    // Check free-tier AI limit
+    final limitCheck = await _claude.checkAiLimit();
+    if (limitCheck != null) {
+      _digest = '';
+      _digestLoading = false;
+      notifyListeners();
+      return;
+    }
+
     _digestLoading = true;
     notifyListeners();
 

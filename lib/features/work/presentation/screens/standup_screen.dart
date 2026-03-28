@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../../theme/app_theme.dart';
 import '../../../../widgets/common_widgets.dart';
+import '../../../../shared/widgets/paywall_screen.dart';
 import '../../domain/models/standup_log.dart';
 import '../viewmodels/standup_view_model.dart';
 
@@ -69,6 +70,17 @@ class _StandupScreenState extends State<StandupScreen> {
 
   Future<void> _submit(StandupViewModel vm) async {
     if (!_hasFilledIn) return;
+
+    // Check free-tier limit before submitting
+    final limitCheck = await vm.checkAiLimit();
+    if (limitCheck != null && mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PaywallScreen(feature: 'ai_calls')),
+      );
+      return;
+    }
+
     HapticFeedback.mediumImpact();
     await vm.submit(
       wins: _winsCtrl.text,

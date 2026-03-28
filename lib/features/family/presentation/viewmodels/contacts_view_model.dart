@@ -4,6 +4,7 @@ import '../../domain/models/contact.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/google_calendar_service.dart';
+import '../../../../services/pro_service.dart';
 
 class ContactsViewModel extends ChangeNotifier {
   ContactsViewModel({
@@ -87,6 +88,13 @@ class ContactsViewModel extends ChangeNotifier {
     return 'Imported $added new contacts from Google';
   }
 
+  /// True if the user is at or over the free-tier contacts limit.
+  bool get atContactsLimit {
+    final pro = ProService();
+    if (pro.hasAccess) return false;
+    return _contacts.length >= ProService.freeContactsLimit;
+  }
+
   Future<bool> addContact({
     required String name,
     required String emoji,
@@ -95,6 +103,7 @@ class ContactsViewModel extends ChangeNotifier {
     String notes = '',
   }) async {
     if (name.trim().isEmpty) return false;
+    if (atContactsLimit) return false;
     final contact = Contact(
       id: const Uuid().v4(),
       name: name.trim(),

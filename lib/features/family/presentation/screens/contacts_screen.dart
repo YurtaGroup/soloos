@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../services/locale_service.dart';
 import '../../../../widgets/common_widgets.dart';
+import '../../../../shared/widgets/paywall_screen.dart';
 import '../../domain/models/contact.dart';
 import '../viewmodels/contacts_view_model.dart';
 
@@ -14,6 +15,10 @@ class ContactsScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   Future<void> _quickAddBirthday(BuildContext context, ContactsViewModel vm) async {
+    if (vm.atContactsLimit) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen(feature: 'contacts')));
+      return;
+    }
     final nameCtrl = TextEditingController();
     DateTime birthday = DateTime(1990, 6, 15);
     String emoji = '🎂';
@@ -161,6 +166,10 @@ class ContactsScreen extends StatelessWidget {
   }
 
   Future<void> _addFullContact(BuildContext context, ContactsViewModel vm) async {
+    if (vm.atContactsLimit) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen(feature: 'contacts')));
+      return;
+    }
     final nameCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
     String emoji = '👤';

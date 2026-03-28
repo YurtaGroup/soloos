@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../models/app_models.dart';
 import '../../../../widgets/common_widgets.dart';
+import '../../../../shared/widgets/paywall_screen.dart';
 import '../viewmodels/ideas_view_model.dart';
 import '../../../../shared/widgets/app_bottom_sheet.dart';
 
@@ -320,7 +321,14 @@ class _IdeaCardState extends State<_IdeaCard> {
                             color: AppColors.ideasColor,
                             onTap: isValidating
                                 ? null
-                                : () => vm.validateIdea(idea),
+                                : () async {
+                                    final limit = await vm.checkAiLimit();
+                                    if (limit != null && context.mounted) {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen(feature: 'ai_calls')));
+                                      return;
+                                    }
+                                    vm.validateIdea(idea);
+                                  },
                           ),
                           const SizedBox(width: 8),
                           _ActionBtn(
@@ -328,8 +336,14 @@ class _IdeaCardState extends State<_IdeaCard> {
                             color: AppColors.accentBlue,
                             onTap: isScripting
                                 ? null
-                                : () => _pickPlatformAndGenerateScript(
-                                    context, vm),
+                                : () async {
+                                    final limit = await vm.checkAiLimit();
+                                    if (limit != null && context.mounted) {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen(feature: 'ai_calls')));
+                                      return;
+                                    }
+                                    _pickPlatformAndGenerateScript(context, vm);
+                                  },
                           ),
                           const SizedBox(width: 8),
                           if (idea.status == IdeaStatus.active)

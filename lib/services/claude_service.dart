@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'storage_service.dart';
+import 'pro_service.dart';
 
 class ClaudeService {
   // Singleton
@@ -17,9 +18,20 @@ class ClaudeService {
   static String proxyBaseUrl = 'https://solo-os.vercel.app';
 
   final StorageService _storage = StorageService();
+  final ProService _pro = ProService();
 
   String get _apiKey => _storage.apiKey;
   bool get _useProxy => _apiKey.isEmpty;
+
+  /// Check if the user can make an AI call (respects free tier limit).
+  /// Returns null if allowed, or an error message string if blocked.
+  Future<String?> checkAiLimit() async {
+    if (_pro.hasAccess) return null; // Pro or trial — no limit
+    final canCall = await _pro.canMakeAiCall();
+    if (canCall) return null;
+    final used = await _pro.aiCallsUsedToday();
+    return 'limit:$used:${ProService.freeAiCallsPerDay}';
+  }
 
   // ─── Core call ────────────────────────────────────────────────
 
@@ -37,10 +49,15 @@ class ClaudeService {
     int maxTokens = 1024,
   }) async {
     try {
+      String result;
       if (_useProxy) {
-        return await _callProxy(userMessage, systemPrompt: systemPrompt, maxTokens: maxTokens);
+        result = await _callProxy(userMessage, systemPrompt: systemPrompt, maxTokens: maxTokens);
+      } else {
+        result = await _callDirect(userMessage, systemPrompt: systemPrompt, maxTokens: maxTokens);
       }
-      return await _callDirect(userMessage, systemPrompt: systemPrompt, maxTokens: maxTokens);
+      // Track usage for free-tier limiting
+      await _pro.recordAiCall();
+      return result;
     } on TimeoutException {
       return '❌ Request timed out. Check your connection.';
     } catch (e) {

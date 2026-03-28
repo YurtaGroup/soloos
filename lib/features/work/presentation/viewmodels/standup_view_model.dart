@@ -50,6 +50,9 @@ class StandupViewModel extends ChangeNotifier {
 
   void reload() => _loadLogs();
 
+  /// Returns a limit string like 'limit:3:3' if blocked, or null if OK.
+  Future<String?> checkAiLimit() => _claude.checkAiLimit();
+
   Future<void> submit({
     required String wins,
     required String challenges,
@@ -58,6 +61,15 @@ class StandupViewModel extends ChangeNotifier {
     _loading = true;
     _aiResponse = null;
     notifyListeners();
+
+    // Check free-tier AI limit before calling
+    final limitCheck = await _claude.checkAiLimit();
+    if (limitCheck != null) {
+      _loading = false;
+      _aiResponse = limitCheck;
+      notifyListeners();
+      return;
+    }
 
     final aiResp = await _claude.analyzeStandup(
       wins: wins.trim(),
