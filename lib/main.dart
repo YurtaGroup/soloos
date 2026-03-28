@@ -151,10 +151,24 @@ class _AuthGateState extends State<_AuthGate> {
     context.read<FamilyViewModel>().reload();
   }
 
+  void _reloadAllForDemo(BuildContext context) {
+    // Reload all ViewModels from local storage after skipping auth
+    context.read<IdeasViewModel>().reload();
+    context.read<HabitsViewModel>().reload();
+    context.read<ProjectsViewModel>().reload();
+    context.read<StandupViewModel>().reload();
+    context.read<ContactsViewModel>().reload();
+    context.read<FinanceViewModel>().reload();
+    context.read<FamilyViewModel>().reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Demo mode — skip auth, use local storage only
     if (_skipAuth) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _reloadAllForDemo(context);
+      });
       final storage = StorageService();
       return storage.onboardingDone
           ? const DashboardScreen()

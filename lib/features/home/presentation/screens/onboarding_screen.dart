@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/demo_data_seeder.dart';
 import '../../../../services/pro_service.dart';
+import '../../../ideas/presentation/viewmodels/ideas_view_model.dart';
+import '../../../health/presentation/viewmodels/habits_view_model.dart';
+import '../../../work/presentation/viewmodels/projects_view_model.dart';
+import '../../../work/presentation/viewmodels/standup_view_model.dart';
+import '../../../family/presentation/viewmodels/contacts_view_model.dart';
+import '../../../finance/presentation/viewmodels/finance_view_model.dart';
+import '../../../family/presentation/viewmodels/family_viewmodel.dart';
 import 'dashboard_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -67,6 +75,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await pro.startTrial();
     await _storage.setOnboardingDone();
     if (!mounted) return;
+
+    // Reload all ViewModels so they pick up seeded demo data
+    context.read<ProjectsViewModel>().reload();
+    context.read<HabitsViewModel>().reload();
+    context.read<IdeasViewModel>().reload();
+    context.read<StandupViewModel>().reload();
+    context.read<ContactsViewModel>().reload();
+    context.read<FinanceViewModel>().reload();
+    context.read<FamilyViewModel>().reload();
+
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const DashboardScreen()),
     );
