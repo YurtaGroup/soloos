@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../widgets/common_widgets.dart';
@@ -133,6 +134,7 @@ class _ProjectCardState extends State<_ProjectCard>
   Future<void> _addTask(ProjectsViewModel vm) async {
     final ctrl = TextEditingController();
     String priority = 'medium';
+    DateTime? dueDate;
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -189,10 +191,10 @@ class _ProjectCardState extends State<_ProjectCard>
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: selected ? c.withOpacity(0.2) : AppColors.surface,
+                          color: selected ? c.withValues(alpha: 0.2) : AppColors.surface,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: selected ? c : AppColors.textMuted.withOpacity(0.3),
+                            color: selected ? c : AppColors.textMuted.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Text(
@@ -208,6 +210,47 @@ class _ProjectCardState extends State<_ProjectCard>
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 12),
+              // Due date picker
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: dueDate ?? DateTime.now().add(const Duration(days: 1)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) setModalState(() => dueDate = picked);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.textMuted.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded,
+                          size: 16, color: dueDate != null ? AppColors.workColor : AppColors.textMuted),
+                      const SizedBox(width: 8),
+                      Text(
+                        dueDate != null ? DateFormat('MMM d, yyyy').format(dueDate!) : 'Due date (optional)',
+                        style: TextStyle(
+                          color: dueDate != null ? AppColors.textPrimary : AppColors.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (dueDate != null)
+                        GestureDetector(
+                          onTap: () => setModalState(() => dueDate = null),
+                          child: const Icon(Icons.close_rounded, size: 16, color: AppColors.textMuted),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -215,10 +258,130 @@ class _ProjectCardState extends State<_ProjectCard>
                   onPressed: () {
                     if (ctrl.text.trim().isEmpty) return;
                     vm.addTask(widget.project,
-                        title: ctrl.text, priority: priority);
+                        title: ctrl.text, priority: priority, dueDate: dueDate);
                     Navigator.pop(ctx);
                   },
                   child: const Text('Add Task'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _editTask(BuildContext context, ProjectsViewModel vm, Task task) {
+    final ctrl = TextEditingController(text: task.title);
+    String priority = task.priority;
+    DateTime? dueDate = task.dueDate;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Edit Task',
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(hintText: 'Task name'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: ['high', 'medium', 'low'].map((p) {
+                  final selected = priority == p;
+                  Color c;
+                  switch (p) {
+                    case 'high': c = AppColors.accentRed; break;
+                    case 'low': c = AppColors.accentGreen; break;
+                    default: c = AppColors.accent;
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => setModalState(() => priority = p),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: selected ? c.withValues(alpha: 0.2) : AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: selected ? c : AppColors.textMuted.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(p.toUpperCase(),
+                            style: TextStyle(color: selected ? c : AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: dueDate ?? DateTime.now().add(const Duration(days: 1)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) setModalState(() => dueDate = picked);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.textMuted.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded,
+                          size: 16, color: dueDate != null ? AppColors.workColor : AppColors.textMuted),
+                      const SizedBox(width: 8),
+                      Text(
+                        dueDate != null ? DateFormat('MMM d, yyyy').format(dueDate!) : 'Due date (optional)',
+                        style: TextStyle(color: dueDate != null ? AppColors.textPrimary : AppColors.textMuted, fontSize: 13),
+                      ),
+                      const Spacer(),
+                      if (dueDate != null)
+                        GestureDetector(
+                          onTap: () => setModalState(() => dueDate = null),
+                          child: const Icon(Icons.close_rounded, size: 16, color: AppColors.textMuted),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (ctrl.text.trim().isEmpty) return;
+                    vm.editTask(task,
+                        title: ctrl.text,
+                        priority: priority,
+                        dueDate: dueDate,
+                        clearDueDate: dueDate == null && task.dueDate != null);
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Save'),
                 ),
               ),
             ],
@@ -319,6 +482,7 @@ class _ProjectCardState extends State<_ProjectCard>
                         vm.deleteTask(p, task);
                         setState(() {});
                       },
+                      onEdit: () => _editTask(context, vm, task),
                     )),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -347,62 +511,87 @@ class _TaskTile extends StatelessWidget {
   final Task task;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   const _TaskTile({
     required this.task,
     required this.onToggle,
     required this.onDelete,
+    required this.onEdit,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isOverdue = task.dueDate != null &&
+        !task.isDone &&
+        task.dueDate!.isBefore(DateTime.now());
+
     return Dismissible(
       key: Key(task.id),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 16),
-        color: AppColors.accentRed.withOpacity(0.2),
+        color: AppColors.accentRed.withValues(alpha: 0.2),
         child: const Icon(Icons.delete_outline, color: AppColors.accentRed),
       ),
       onDismissed: (_) => onDelete(),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: onToggle,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: task.isDone ? AppColors.workColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: task.isDone ? AppColors.workColor : AppColors.textMuted,
-                    width: task.isDone ? 0 : 1.5,
+      child: GestureDetector(
+        onTap: onEdit,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: onToggle,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: task.isDone ? AppColors.workColor : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: task.isDone ? AppColors.workColor : AppColors.textMuted,
+                      width: task.isDone ? 0 : 1.5,
+                    ),
                   ),
-                ),
-                child: task.isDone
-                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                task.title,
-                style: TextStyle(
-                  color: task.isDone ? AppColors.textMuted : AppColors.textPrimary,
-                  fontSize: 14,
-                  decoration: task.isDone ? TextDecoration.lineThrough : null,
+                  child: task.isDone
+                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                      : null,
                 ),
               ),
-            ),
-            PriorityBadge(task.priority),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      style: TextStyle(
+                        color: task.isDone ? AppColors.textMuted : AppColors.textPrimary,
+                        fontSize: 14,
+                        decoration: task.isDone ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    if (task.dueDate != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          DateFormat('MMM d').format(task.dueDate!),
+                          style: TextStyle(
+                            color: isOverdue ? AppColors.accentRed : AppColors.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              PriorityBadge(task.priority),
+            ],
+          ),
         ),
       ),
     );

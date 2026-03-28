@@ -91,16 +91,37 @@ class ProjectsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addTask(Project project, {required String title, required String priority}) async {
+  Future<void> addTask(Project project, {required String title, required String priority, DateTime? dueDate}) async {
     final task = Task(
       id: const Uuid().v4(),
       title: title.trim(),
       priority: priority,
+      dueDate: dueDate,
     );
     project.tasks.add(task);
 
     if (_useDb) {
       await ApiService.insert('tasks', task.toRow(project.id));
+    }
+
+    await _saveAndNotify();
+  }
+
+  Future<void> editTask(Task task, {String? title, String? priority, DateTime? dueDate, bool clearDueDate = false}) async {
+    if (title != null) task.title = title.trim();
+    if (priority != null) task.priority = priority;
+    if (clearDueDate) {
+      task.dueDate = null;
+    } else if (dueDate != null) {
+      task.dueDate = dueDate;
+    }
+
+    if (_useDb) {
+      await ApiService.update('tasks', task.id, {
+        'title': task.title,
+        'priority': task.priority,
+        'due_date': task.dueDate?.toIso8601String(),
+      });
     }
 
     await _saveAndNotify();

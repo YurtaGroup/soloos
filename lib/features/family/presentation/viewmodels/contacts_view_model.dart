@@ -5,6 +5,7 @@ import '../../../../services/storage_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/google_calendar_service.dart';
 import '../../../../services/pro_service.dart';
+import '../../../../services/notification_service.dart';
 
 class ContactsViewModel extends ChangeNotifier {
   ContactsViewModel({
@@ -54,6 +55,9 @@ class ContactsViewModel extends ChangeNotifier {
 
     _loading = false;
     notifyListeners();
+
+    // Schedule birthday notifications for upcoming contacts
+    NotificationService().scheduleBirthdayReminders(_contacts);
   }
 
   void reload() => _loadContacts();

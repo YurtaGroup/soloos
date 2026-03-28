@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'storage_service.dart';
 import 'locale_service.dart';
+import '../models/app_models.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._();
@@ -13,6 +14,7 @@ class NotificationService {
 
   final _plugin = FlutterLocalNotificationsPlugin();
   static const _dailyDigestId = 1;
+  static const _birthdayIdBase = 1000; // IDs 1000+ reserved for birthdays
   static const _prefKey = 'daily_digest_enabled';
 
   bool _initialized = false;
@@ -128,5 +130,71 @@ class NotificationService {
       scheduled = scheduled.add(const Duration(days: 1));
     }
     return scheduled;
+  }
+
+  // ─── Birthday Notifications ───────────────────────────────────
+
+  /// Schedule notifications for upcoming birthdays (within 7 days).
+  /// Call this after contacts are loaded or modified.
+  Future<void> scheduleBirthdayReminders(List<Contact> contacts) async {
+    if (!_initialized) return;
+
+    // Cancel all existing birthday notifications
+    for (int i = 0; i < 100; i++) {
+      await _plugin.cancel(_birthdayIdBase + i);
+    }
+
+    final loc = _loc;
+    int idx = 0;
+
+    for (final contact in contacts) {
+      if (idx >= 100) break; // Max 100 birthday notifications
+
+      final daysUntil = contact.daysUntilBirthday;
+      if (daysUntil > 7 || daysUntil < 0) continue;
+
+      final now = tz.TZDateTime.now(tz.local);
+      final notifDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        9, // 9 AM
+      ).add(Duration(days: daysUntil));
+
+      // Skip if already in the past
+      if (notifDate.isBefore(now)) continue;
+
+      final title = daysUntil == 0
+          ? '🎂 ${contact.name}\'s birthday is today!'
+          : '🎂 ${contact.name}\'s birthday in $daysUntil day${daysUntil == 1 ? '' : 's'}';
+
+      final body = daysUntil == 0
+          ? 'Don\'t forget to wish them a happy birthday!'
+          : 'Get a gift or send a message!';
+
+      final androidDetails = AndroidNotificationDetails(
+        'birthdays',
+        loc.t('upcoming_birthdays'),
+        channelDescription: 'Birthday reminders for your contacts',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails();
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+      await _plugin.zonedSchedule(
+        _birthdayIdBase + idx,
+        title,
+        body,
+        notifDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+
+      idx++;
+    }
   }
 }

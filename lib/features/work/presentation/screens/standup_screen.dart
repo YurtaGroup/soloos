@@ -461,32 +461,135 @@ class _LogHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            DateFormat('MMM d, yyyy').format(log.date),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
+    return GestureDetector(
+      onTap: () => _showDetail(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  DateFormat('MMM d, yyyy').format(log.date),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textMuted),
+              ],
             ),
-          ),
-          const SizedBox(height: 6),
-          if (log.aiResponse.isNotEmpty)
+            const SizedBox(height: 6),
+            if (log.aiResponse.isNotEmpty)
+              Text(
+                log.aiResponse.substring(0, log.aiResponse.length > 120 ? 120 : log.aiResponse.length),
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.5),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scrollCtrl) => ListView(
+          controller: scrollCtrl,
+          padding: const EdgeInsets.all(20),
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: AppColors.textMuted, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              log.aiResponse.substring(0, log.aiResponse.length > 120 ? 120 : log.aiResponse.length),
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.5),
+              DateFormat('EEEE, MMMM d, yyyy').format(log.date),
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
             ),
-        ],
+            const SizedBox(height: 20),
+
+            if (log.wins.isNotEmpty) ...[
+              _DetailSection(emoji: '✅', title: 'Wins', content: log.wins, color: AppColors.accentGreen),
+              const SizedBox(height: 14),
+            ],
+            if (log.challenges.isNotEmpty) ...[
+              _DetailSection(emoji: '🚧', title: 'Challenges', content: log.challenges, color: AppColors.accentRed),
+              const SizedBox(height: 14),
+            ],
+            if (log.priorities.isNotEmpty) ...[
+              _DetailSection(emoji: '🎯', title: 'Priorities', content: log.priorities, color: AppColors.primary),
+              const SizedBox(height: 14),
+            ],
+
+            if (log.aiResponse.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.auto_awesome, color: AppColors.primaryLight, size: 16),
+                        SizedBox(width: 6),
+                        Text('AI Analysis',
+                            style: TextStyle(color: AppColors.primaryLight, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(log.aiResponse,
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, height: 1.7)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _DetailSection extends StatelessWidget {
+  final String emoji, title, content;
+  final Color color;
+  const _DetailSection({required this.emoji, required this.title, required this.content, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$emoji $title', style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text(content, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+      ],
     );
   }
 }
