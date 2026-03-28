@@ -4,7 +4,7 @@ import '../../domain/models/idea.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
 import '../../../../services/storage_service.dart';
-import '../../../../services/supabase_service.dart';
+import '../../../../services/api_service.dart';
 import '../../../../services/claude_service.dart';
 
 class IdeasViewModel extends ChangeNotifier {
@@ -38,7 +38,7 @@ class IdeasViewModel extends ChangeNotifier {
 
   bool get atActiveLimit => activeIdeas.length >= 3;
 
-  bool get _useDb => SupabaseService.isAuthenticated;
+  bool get _useDb => ApiService.isAuthenticated;
 
   Future<void> _loadIdeas() async {
     _loading = true;
@@ -46,7 +46,7 @@ class IdeasViewModel extends ChangeNotifier {
 
     try {
       if (_useDb) {
-        final rows = await SupabaseService.getAll('ideas', orderBy: 'created_at');
+        final rows = await ApiService.getAll('ideas', orderBy: 'created_at');
         _ideas = rows.map((r) => Idea.fromRow(r)).toList();
       } else {
         _ideas = _storage.getIdeas();
@@ -72,9 +72,7 @@ class IdeasViewModel extends ChangeNotifier {
     );
 
     if (_useDb) {
-      final row = idea.toRow();
-      row['user_id'] = SupabaseService.userId;
-      await SupabaseService.client.from('ideas').insert(row);
+      await ApiService.insert('ideas', idea.toRow());
     }
 
     final all = _storage.getIdeas()..add(idea);
@@ -87,7 +85,7 @@ class IdeasViewModel extends ChangeNotifier {
 
   Future<void> deleteIdea(String ideaId) async {
     if (_useDb) {
-      await SupabaseService.delete('ideas', ideaId);
+      await ApiService.delete('ideas', ideaId);
     }
     final all = _storage.getIdeas()..removeWhere((i) => i.id == ideaId);
     await _storage.saveIdeas(all);
@@ -96,7 +94,7 @@ class IdeasViewModel extends ChangeNotifier {
 
   Future<void> updateStatus(String ideaId, IdeaStatus status) async {
     if (_useDb) {
-      await SupabaseService.update('ideas', ideaId, {'status': status.name});
+      await ApiService.update('ideas', ideaId, {'status': status.name});
     }
 
     final all = _storage.getIdeas();
@@ -120,7 +118,7 @@ class IdeasViewModel extends ChangeNotifier {
     idea.notes.insert(0, '🤖 AI Validation:\n$result');
 
     if (_useDb) {
-      await SupabaseService.update('ideas', idea.id, {'notes': idea.notes});
+      await ApiService.update('ideas', idea.id, {'notes': idea.notes});
     }
 
     final all = _storage.getIdeas();
@@ -148,7 +146,7 @@ class IdeasViewModel extends ChangeNotifier {
     idea.aiScript = script;
 
     if (_useDb) {
-      await SupabaseService.update('ideas', idea.id, {'ai_script': script});
+      await ApiService.update('ideas', idea.id, {'ai_script': script});
     }
 
     final all = _storage.getIdeas();

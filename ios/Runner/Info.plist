@@ -51,6 +51,8 @@
 	<string>Solo OS uses the microphone for voice-to-text in your daily standup.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Solo OS uses speech recognition to transcribe your voice notes.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

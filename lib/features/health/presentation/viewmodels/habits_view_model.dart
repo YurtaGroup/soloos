@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/habit.dart';
 import '../../../../services/storage_service.dart';
-import '../../../../services/supabase_service.dart';
+import '../../../../services/api_service.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
 
@@ -23,7 +23,7 @@ class HabitsViewModel extends ChangeNotifier {
       ? 0
       : _habits.map((h) => h.currentStreak).reduce((a, b) => a > b ? a : b);
 
-  bool get _useDb => SupabaseService.isAuthenticated;
+  bool get _useDb => ApiService.isAuthenticated;
 
   Future<void> _loadHabits() async {
     _loading = true;
@@ -31,8 +31,8 @@ class HabitsViewModel extends ChangeNotifier {
 
     try {
       if (_useDb) {
-        final rows = await SupabaseService.getAll('habits', orderBy: 'created_at', ascending: true);
-        final completionRows = await SupabaseService.getAll('habit_completions', orderBy: 'completed_date');
+        final rows = await ApiService.getAll('habits', orderBy: 'created_at', ascending: true);
+        final completionRows = await ApiService.getAll('habit_completions', orderBy: 'completed_date');
 
         // Group completions by habit_id
         final completionsByHabit = <String, List<DateTime>>{};
@@ -67,20 +67,12 @@ class HabitsViewModel extends ChangeNotifier {
         (d) => d.year == today.year && d.month == today.month && d.day == today.day,
       );
       if (_useDb) {
-        await SupabaseService.client
-            .from('habit_completions')
-            .delete()
-            .eq('habit_id', habit.id)
-            .eq('completed_date', todayStr);
+        await ApiService.deleteHabitCompletion(habit.id, todayStr);
       }
     } else {
       habit.completedDates.add(today);
       if (_useDb) {
-        await SupabaseService.client.from('habit_completions').insert({
-          'user_id': SupabaseService.userId,
-          'habit_id': habit.id,
-          'completed_date': todayStr,
-        });
+        await ApiService.insertHabitCompletion(habit.id, todayStr);
       }
       GamificationEventBus.emit(
         GamificationEventType.habitCompleted,
@@ -104,9 +96,7 @@ class HabitsViewModel extends ChangeNotifier {
     );
 
     if (_useDb) {
-      final row = habit.toRow();
-      row['user_id'] = SupabaseService.userId;
-      await SupabaseService.client.from('habits').insert(row);
+      await ApiService.insert('habits', habit.toRow());
     }
 
     final habits = _storage.getHabits()..add(habit);
@@ -117,7 +107,7 @@ class HabitsViewModel extends ChangeNotifier {
 
   Future<void> deleteHabit(Habit habit) async {
     if (_useDb) {
-      await SupabaseService.delete('habits', habit.id);
+      await ApiService.delete('habits', habit.id);
     }
     _habits.remove(habit);
     await _storage.saveHabits(_habits);

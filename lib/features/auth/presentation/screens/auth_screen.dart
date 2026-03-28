@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../services/api_service.dart';
 import '../../../../theme/app_theme.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback? onSkip;
-  const AuthScreen({super.key, this.onSkip});
+  final VoidCallback? onAuthSuccess;
+  const AuthScreen({super.key, this.onSkip, this.onAuthSuccess});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -17,8 +18,6 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLogin = true;
   bool _loading = false;
   String? _error;
-
-  SupabaseClient get _client => Supabase.instance.client;
 
   @override
   void dispose() {
@@ -53,19 +52,17 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       if (_isLogin) {
-        await _client.auth.signInWithPassword(
-          email: email,
-          password: password,
-        );
+        await ApiService.signIn(email: email, password: password);
       } else {
-        await _client.auth.signUp(
+        await ApiService.signUp(
           email: email,
           password: password,
-          data: {'display_name': name},
+          displayName: name,
         );
       }
-      // Auth state change listener in main.dart handles navigation
-    } on AuthException catch (e) {
+      // Notify parent to rebuild with authenticated state
+      widget.onAuthSuccess?.call();
+    } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
       setState(() => _error = 'Something went wrong. Please try again.');

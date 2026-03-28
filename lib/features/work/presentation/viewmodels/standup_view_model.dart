@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/standup_log.dart';
 import '../../../../services/storage_service.dart';
-import '../../../../services/supabase_service.dart';
+import '../../../../services/api_service.dart';
 import '../../../../services/claude_service.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
@@ -27,7 +27,7 @@ class StandupViewModel extends ChangeNotifier {
   bool get loading => _loading;
   String? get aiResponse => _aiResponse;
 
-  bool get _useDb => SupabaseService.isAuthenticated;
+  bool get _useDb => ApiService.isAuthenticated;
 
   Future<void> _loadLogs() async {
     _loading = true;
@@ -35,7 +35,7 @@ class StandupViewModel extends ChangeNotifier {
 
     try {
       if (_useDb) {
-        final rows = await SupabaseService.getAll('standup_logs', orderBy: 'created_at');
+        final rows = await ApiService.getAll('standup_logs', orderBy: 'created_at');
         _logs = rows.map((r) => StandupLog.fromRow(r)).toList();
       } else {
         _logs = _storage.getStandupLogs();
@@ -74,9 +74,7 @@ class StandupViewModel extends ChangeNotifier {
     );
 
     if (_useDb) {
-      final row = log.toRow();
-      row['user_id'] = SupabaseService.userId;
-      await SupabaseService.client.from('standup_logs').insert(row);
+      await ApiService.insert('standup_logs', log.toRow());
     }
 
     final logs = _storage.getStandupLogs()..insert(0, log);

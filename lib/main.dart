@@ -3,12 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'services/storage_service.dart';
 import 'services/locale_service.dart';
 import 'services/google_calendar_service.dart';
-import 'services/supabase_service.dart';
+import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
 import 'features/ideas/presentation/viewmodels/ideas_view_model.dart';
@@ -32,25 +31,25 @@ void main() async {
   ));
 
   // Load env (may not exist in production web builds)
-  bool supabaseReady = false;
+  bool apiReady = false;
   try {
     await dotenv.load(fileName: '.env');
-    final url = dotenv.env['SUPABASE_URL'] ?? '';
-    final key = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
-    if (url.isNotEmpty && key.isNotEmpty && url.startsWith('https://')) {
-      await Supabase.initialize(url: url, anonKey: key);
-      SupabaseService.markInitialized();
-      supabaseReady = true;
+    final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+    if (baseUrl.isNotEmpty) {
+      apiReady = true;
     }
   } catch (e) {
-    debugPrint('Supabase init skipped: $e');
+    debugPrint('Env load skipped: $e');
   }
 
   // Local storage always available
   final storage = StorageService();
   await storage.init();
 
-  // Demo data is now opt-in via onboarding (no auto-seed)
+  // Initialize API service (restores JWT tokens from local storage)
+  if (apiReady) {
+    await ApiService.init();
+  }
 
   // Initialize notifications
   await NotificationService().init();
@@ -75,7 +74,7 @@ void main() async {
       ],
       child: SoloOSApp(
         isOnboarded: storage.onboardingDone,
-        supabaseReady: supabaseReady,
+        apiReady: apiReady,
       ),
     ),
   );
@@ -83,11 +82,11 @@ void main() async {
 
 class SoloOSApp extends StatelessWidget {
   final bool isOnboarded;
-  final bool supabaseReady;
+  final bool apiReady;
   const SoloOSApp({
     super.key,
     required this.isOnboarded,
-    required this.supabaseReady,
+    required this.apiReady,
   });
 
   @override
@@ -109,7 +108,7 @@ class SoloOSApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: supabaseReady
+      home: apiReady
           ? const _AuthGate()
           : isOnboarded
               ? const DashboardScreen()
@@ -118,7 +117,7 @@ class SoloOSApp extends StatelessWidget {
   }
 }
 
-/// Listens to Supabase auth state and routes accordingly.
+/// Checks JWT auth state and routes accordingly.
 class _AuthGate extends StatefulWidget {
   const _AuthGate();
 
@@ -152,29 +151,23 @@ class _AuthGateState extends State<_AuthGate> {
           : const OnboardingScreen();
     }
 
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        final session = Supabase.instance.client.auth.currentSession;
+    if (ApiService.isAuthenticated) {
+      // Reload ViewModels once after login so they fetch from API
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _reloadAllViewModels(context);
+      });
 
-        if (session != null) {
-          // Reload ViewModels once after login so they fetch from Supabase
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _reloadAllViewModels(context);
-          });
+      final storage = StorageService();
+      return storage.onboardingDone
+          ? const DashboardScreen()
+          : const OnboardingScreen();
+    }
 
-          final storage = StorageService();
-          return storage.onboardingDone
-              ? const DashboardScreen()
-              : const OnboardingScreen();
-        }
-
-        // Reset reload flag on logout
-        _didReload = false;
-        return AuthScreen(
-          onSkip: () => setState(() => _skipAuth = true),
-        );
-      },
+    // Reset reload flag on logout
+    _didReload = false;
+    return AuthScreen(
+      onSkip: () => setState(() => _skipAuth = true),
+      onAuthSuccess: () => setState(() {}),
     );
   }
 }

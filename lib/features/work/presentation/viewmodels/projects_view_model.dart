@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/project.dart';
 import '../../domain/models/task.dart';
 import '../../../../services/storage_service.dart';
-import '../../../../services/supabase_service.dart';
+import '../../../../services/api_service.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
 
@@ -20,7 +20,7 @@ class ProjectsViewModel extends ChangeNotifier {
   List<Project> get projects => _projects;
   bool get loading => _loading;
 
-  bool get _useDb => SupabaseService.isAuthenticated;
+  bool get _useDb => ApiService.isAuthenticated;
 
   Future<void> _loadProjects() async {
     _loading = true;
@@ -28,8 +28,8 @@ class ProjectsViewModel extends ChangeNotifier {
 
     try {
       if (_useDb) {
-        final rows = await SupabaseService.getAll('projects', orderBy: 'created_at');
-        final taskRows = await SupabaseService.getAll('tasks', orderBy: 'created_at', ascending: true);
+        final rows = await ApiService.getAll('projects', orderBy: 'created_at');
+        final taskRows = await ApiService.getAll('tasks', orderBy: 'created_at', ascending: true);
 
         // Group tasks by project_id
         final tasksByProject = <String, List<Task>>{};
@@ -66,9 +66,7 @@ class ProjectsViewModel extends ChangeNotifier {
     );
 
     if (_useDb) {
-      final row = p.toRow();
-      row['user_id'] = SupabaseService.userId;
-      await SupabaseService.client.from('projects').insert(row);
+      await ApiService.insert('projects', p.toRow());
     }
 
     // Also save locally as cache
@@ -81,7 +79,7 @@ class ProjectsViewModel extends ChangeNotifier {
   Future<void> deleteProject(int index) async {
     final project = _projects[index];
     if (_useDb) {
-      await SupabaseService.delete('projects', project.id);
+      await ApiService.delete('projects', project.id);
     }
     _projects.removeAt(index);
     await _storage.saveProjects(_projects);
@@ -102,9 +100,7 @@ class ProjectsViewModel extends ChangeNotifier {
     project.tasks.add(task);
 
     if (_useDb) {
-      final row = task.toRow(project.id);
-      row['user_id'] = SupabaseService.userId;
-      await SupabaseService.client.from('tasks').insert(row);
+      await ApiService.insert('tasks', task.toRow(project.id));
     }
 
     await _saveAndNotify();
@@ -121,7 +117,7 @@ class ProjectsViewModel extends ChangeNotifier {
     }
 
     if (_useDb) {
-      await SupabaseService.update('tasks', task.id, {'is_done': task.isDone});
+      await ApiService.update('tasks', task.id, {'is_done': task.isDone});
     }
 
     await _saveAndNotify();
@@ -130,7 +126,7 @@ class ProjectsViewModel extends ChangeNotifier {
   Future<void> deleteTask(Project project, Task task) async {
     project.tasks.remove(task);
     if (_useDb) {
-      await SupabaseService.delete('tasks', task.id);
+      await ApiService.delete('tasks', task.id);
     }
     await _saveAndNotify();
   }

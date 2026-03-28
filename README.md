@@ -11,7 +11,7 @@ flutter doctor
 
 ### 2. Create platform files
 ```bash
-cd "flutter app"
+cd "Solo OS"
 flutter create . --platforms=ios,android,macos,web
 ```
 

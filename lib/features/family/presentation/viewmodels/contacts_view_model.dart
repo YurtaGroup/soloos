@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/contact.dart';
 import '../../../../services/storage_service.dart';
-import '../../../../services/supabase_service.dart';
+import '../../../../services/api_service.dart';
 import '../../../../services/google_calendar_service.dart';
 
 class ContactsViewModel extends ChangeNotifier {
@@ -31,7 +31,7 @@ class ContactsViewModel extends ChangeNotifier {
   List<Contact> get rest =>
       _contacts.where((c) => c.daysUntilBirthday > 30).toList();
 
-  bool get _useDb => SupabaseService.isAuthenticated;
+  bool get _useDb => ApiService.isAuthenticated;
 
   Future<void> _loadContacts() async {
     _loading = true;
@@ -39,7 +39,7 @@ class ContactsViewModel extends ChangeNotifier {
 
     try {
       if (_useDb) {
-        final rows = await SupabaseService.getAll('contacts', orderBy: 'birthday');
+        final rows = await ApiService.getAll('contacts', orderBy: 'birthday');
         _contacts = rows.map((r) => Contact.fromRow(r)).toList()
           ..sort((a, b) => a.daysUntilBirthday.compareTo(b.daysUntilBirthday));
       } else {
@@ -76,9 +76,7 @@ class ContactsViewModel extends ChangeNotifier {
       if (!existingNames.contains(c.name.toLowerCase())) {
         existing.add(c);
         if (_useDb) {
-          final row = c.toRow();
-          row['user_id'] = SupabaseService.userId;
-          await SupabaseService.client.from('contacts').insert(row);
+          await ApiService.insert('contacts', c.toRow());
         }
         added++;
       }
@@ -107,9 +105,7 @@ class ContactsViewModel extends ChangeNotifier {
     );
 
     if (_useDb) {
-      final row = contact.toRow();
-      row['user_id'] = SupabaseService.userId;
-      await SupabaseService.client.from('contacts').insert(row);
+      await ApiService.insert('contacts', contact.toRow());
     }
 
     final contacts = _storage.getContacts()..add(contact);
@@ -120,7 +116,7 @@ class ContactsViewModel extends ChangeNotifier {
 
   Future<void> deleteContact(Contact contact) async {
     if (_useDb) {
-      await SupabaseService.delete('contacts', contact.id);
+      await ApiService.delete('contacts', contact.id);
     }
     _contacts.remove(contact);
     await _storage.saveContacts(_contacts);
