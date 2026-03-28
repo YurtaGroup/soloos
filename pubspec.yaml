@@ -1,7 +1,7 @@
 name: solo_os
 description: Solo OS - Operating System for Solopreneurs
 publish_to: 'none'
-version: 1.0.0+4
+version: 1.0.0+5
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -41,6 +41,9 @@ dependencies:
 
   # In-App Purchases
   purchases_flutter: ^8.1.0
+
+  # Biometric auth
+  local_auth: ^2.3.0
 
   # Calendar UI
   table_calendar: ^3.1.3

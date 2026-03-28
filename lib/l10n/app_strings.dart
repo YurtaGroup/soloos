@@ -230,6 +230,16 @@ const Map<String, Map<String, String>> appStrings = {
     'launch_btn': 'Launch Solo OS',
     'continue_btn': 'Continue →',
 
+    // Appearance & Security
+    'appearance_section': 'Appearance',
+    'theme_label': 'Theme',
+    'theme_dark': 'Dark mode',
+    'theme_light': 'Light mode',
+    'security_section': 'Security',
+    'biometric_label': 'Face ID / Fingerprint',
+    'biometric_sub': 'Unlock app with biometrics',
+    'biometric_reason': 'Authenticate to enable biometric login',
+
     // Paywall
     'paywall_title': 'Upgrade to Pro',
     'paywall_sub_ai': 'You\'ve used all 3 free AI calls today.\nUpgrade for unlimited AI power.',
@@ -455,6 +465,16 @@ const Map<String, Map<String, String>> appStrings = {
     'launch_btn': 'Запустить Solo OS',
     'continue_btn': 'Продолжить →',
 
+    // Appearance & Security
+    'appearance_section': 'Внешний вид',
+    'theme_label': 'Тема',
+    'theme_dark': 'Тёмная тема',
+    'theme_light': 'Светлая тема',
+    'security_section': 'Безопасность',
+    'biometric_label': 'Face ID / Отпечаток',
+    'biometric_sub': 'Разблокировка биометрией',
+    'biometric_reason': 'Подтвердите для включения биометрии',
+
     // Paywall
     'paywall_title': 'Перейти на Pro',
     'paywall_sub_ai': 'Вы использовали все 3 бесплатных AI-вызова сегодня.\nОбновитесь для безлимитного AI.',
@@ -679,6 +699,16 @@ const Map<String, Map<String, String>> appStrings = {
     'api_key_section': 'Claude API ачкычы (AI функциялары үчүн)',
     'launch_btn': 'Solo OSту ишке киргизүү',
     'continue_btn': 'Улантуу →',
+
+    // Appearance & Security
+    'appearance_section': 'Көрүнүш',
+    'theme_label': 'Тема',
+    'theme_dark': 'Караңгы тема',
+    'theme_light': 'Жарык тема',
+    'security_section': 'Коопсуздук',
+    'biometric_label': 'Face ID / Манжа изи',
+    'biometric_sub': 'Биометрия менен кулпу ачуу',
+    'biometric_reason': 'Биометрияны иштетүү үчүн ырастаңыз',
 
     // Paywall
     'paywall_title': 'Pro планга өтүү',

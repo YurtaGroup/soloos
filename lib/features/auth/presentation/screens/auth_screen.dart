@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../services/api_service.dart';
 import '../../../../theme/app_theme.dart';
 
@@ -20,11 +22,37 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _tryBiometricLogin();
+  }
+
+  @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _nameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _tryBiometricLogin() async {
+    // Only attempt biometric if user was previously logged in and enabled it
+    if (!ApiService.isAuthenticated) return;
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('biometric_enabled') ?? false;
+    if (!enabled) return;
+
+    final auth = LocalAuthentication();
+    final available = await auth.canCheckBiometrics || await auth.isDeviceSupported();
+    if (!available) return;
+
+    final ok = await auth.authenticate(
+      localizedReason: 'Unlock Solo OS',
+      options: const AuthenticationOptions(biometricOnly: true),
+    );
+    if (ok && mounted) {
+      widget.onAuthSuccess?.call();
+    }
   }
 
   Future<void> _submit() async {

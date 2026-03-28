@@ -34,6 +34,80 @@ class AppColors {
 }
 
 class AppTheme {
+  static ThemeData get light {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: const Color(0xFFF5F5FA),
+      colorScheme: const ColorScheme.light(
+        surface: Colors.white,
+        primary: AppColors.primary,
+        secondary: AppColors.accent,
+        onPrimary: Colors.white,
+        onSurface: Color(0xFF1C1C2E),
+      ),
+      textTheme: ThemeData.light().textTheme.apply(
+        bodyColor: const Color(0xFF1C1C2E),
+        displayColor: const Color(0xFF1C1C2E),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF5F5FA),
+        elevation: 0,
+        centerTitle: false,
+        iconTheme: IconThemeData(color: Color(0xFF1C1C2E)),
+        titleTextStyle: TextStyle(
+          color: Color(0xFF1C1C2E),
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFEEEEF4),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB), width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB), width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: Color(0xFF9CA3AF),
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+      ),
+    );
+  }
+
   static ThemeData get dark {
     return ThemeData(
       useMaterial3: true,

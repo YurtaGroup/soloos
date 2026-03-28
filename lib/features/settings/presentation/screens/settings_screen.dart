@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../theme/app_theme.dart';
@@ -7,6 +8,7 @@ import '../../../../services/locale_service.dart';
 import '../../../../services/google_calendar_service.dart';
 import '../../../../services/pro_service.dart';
 import '../../../../services/notification_service.dart';
+import '../../../../services/theme_service.dart';
 import '../../../home/presentation/screens/onboarding_screen.dart';
 import 'calendar_screen.dart';
 
@@ -24,6 +26,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyCtrl = TextEditingController();
   bool _apiKeyVisible = false;
   late bool _digestEnabled;
+  bool _biometricEnabled = false;
+  bool _biometricAvailable = false;
 
   @override
   void initState() {
@@ -31,6 +35,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _nameCtrl.text = _storage.userName;
     _apiKeyCtrl.text = _storage.apiKey;
     _digestEnabled = _notifs.digestEnabled;
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final auth = LocalAuthentication();
+    _biometricAvailable = await auth.canCheckBiometrics || await auth.isDeviceSupported();
+    _biometricEnabled = _storage.prefs.getBool('biometric_enabled') ?? false;
+    if (mounted) setState(() {});
   }
 
   @override
@@ -113,6 +125,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ]),
           const SizedBox(height: 14),
+
+          // ── Appearance ──────────────────────────────────────
+          _Section(title: loc.t('appearance_section'), children: [
+            Row(
+              children: [
+                Icon(
+                  context.watch<ThemeService>().isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  color: AppColors.accent,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(loc.t('theme_label'),
+                          style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500)),
+                      Text(
+                        context.watch<ThemeService>().isDark ? loc.t('theme_dark') : loc.t('theme_light'),
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: context.watch<ThemeService>().isDark,
+                  activeColor: AppColors.primary,
+                  onChanged: (_) => context.read<ThemeService>().toggle(),
+                ),
+              ],
+            ),
+          ]),
+          const SizedBox(height: 14),
+
+          // ── Security ──────────────────────────────────────
+          if (_biometricAvailable)
+            _Section(title: loc.t('security_section'), children: [
+              Row(
+                children: [
+                  const Icon(Icons.fingerprint_rounded, color: AppColors.accentGreen, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(loc.t('biometric_label'),
+                            style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500)),
+                        Text(loc.t('biometric_sub'),
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: _biometricEnabled,
+                    activeColor: AppColors.primary,
+                    onChanged: (val) async {
+                      if (val) {
+                        // Verify biometric before enabling
+                        final auth = LocalAuthentication();
+                        final ok = await auth.authenticate(
+                          localizedReason: loc.t('biometric_reason'),
+                          options: const AuthenticationOptions(biometricOnly: true),
+                        );
+                        if (!ok) return;
+                      }
+                      await _storage.prefs.setBool('biometric_enabled', val);
+                      setState(() => _biometricEnabled = val);
+                    },
+                  ),
+                ],
+              ),
+            ]),
+          if (_biometricAvailable) const SizedBox(height: 14),
 
           // ── Subscription ──────────────────────────────────────
           _buildSubscriptionSection(loc),
