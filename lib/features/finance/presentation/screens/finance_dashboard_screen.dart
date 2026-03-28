@@ -52,6 +52,10 @@ class FinanceDashboardScreen extends StatelessWidget {
                   trailing: '${vm.subscriptions.length} active',
                   child: _SubscriptionsList(vm: vm),
                 ),
+                _SliverSection(
+                  title: '📊 Monthly Summary',
+                  child: _MonthlySummary(vm: vm),
+                ),
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
@@ -774,6 +778,169 @@ class _EmptyState extends StatelessWidget {
           Text(message,
               style: const TextStyle(
                   color: AppColors.textSecondary, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthlySummary extends StatelessWidget {
+  final FinanceViewModel vm;
+  const _MonthlySummary({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    final income = vm.totalMonthlyIncome + vm.totalOneTimeIncomeThisMonth;
+    final bills = vm.totalMonthlyObligations;
+    final spent = vm.totalMonthlyExpenses;
+    final total = income + bills + spent;
+    // Avoid division by zero
+    final incomeRatio = total > 0 ? income / total : 0.0;
+    final billsRatio = total > 0 ? bills / total : 0.0;
+    final spentRatio = total > 0 ? spent / total : 0.0;
+    final savings = income - bills - spent;
+    final savingsRate = income > 0 ? (savings / income * 100) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Visual bar breakdown
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 10,
+            child: Row(
+              children: [
+                if (incomeRatio > 0)
+                  Flexible(
+                    flex: (incomeRatio * 100).round().clamp(1, 100),
+                    child: Container(color: AppColors.accentGreen),
+                  ),
+                if (billsRatio > 0)
+                  Flexible(
+                    flex: (billsRatio * 100).round().clamp(1, 100),
+                    child: Container(color: AppColors.accentBlue),
+                  ),
+                if (spentRatio > 0)
+                  Flexible(
+                    flex: (spentRatio * 100).round().clamp(1, 100),
+                    child: Container(color: AppColors.accent),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Legend rows
+        _SummaryRow(color: AppColors.accentGreen, label: 'Total Income', value: '\$${_fmt(income)}'),
+        _SummaryRow(color: AppColors.accentBlue, label: 'Bills & Obligations', value: '-\$${_fmt(bills)}'),
+        _SummaryRow(color: AppColors.accent, label: 'Expenses', value: '-\$${_fmt(spent)}'),
+        const Divider(color: AppColors.textMuted, height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              savings >= 0 ? 'Net Savings' : 'Net Deficit',
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              '${savings >= 0 ? '+' : '-'}\$${_fmt(savings.abs())}',
+              style: TextStyle(
+                color: savings >= 0 ? AppColors.accentGreen : AppColors.accentRed,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        if (income > 0) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: savingsRate >= 20
+                  ? AppColors.accentGreen.withValues(alpha: 0.1)
+                  : AppColors.accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  savingsRate >= 20 ? Icons.trending_up_rounded : Icons.info_outline_rounded,
+                  size: 14,
+                  color: savingsRate >= 20 ? AppColors.accentGreen : AppColors.accent,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Savings rate: ${savingsRate.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    color: savingsRate >= 20 ? AppColors.accentGreen : AppColors.accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Expense category breakdown
+        if (vm.thisMonthExpenses.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const Text('By Category', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          ..._expensesByCategory(),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _expensesByCategory() {
+    final byCategory = <String, double>{};
+    for (final e in vm.thisMonthExpenses) {
+      byCategory[e.category.name] = (byCategory[e.category.name] ?? 0) + e.amount;
+    }
+    final sorted = byCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return sorted.take(5).map((entry) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            Text(
+              '${entry.key[0].toUpperCase()}${entry.key.substring(1)}',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+            const Spacer(),
+            Text(
+              '\$${_fmt(entry.value)}',
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final Color color;
+  final String label, value;
+  const _SummaryRow({required this.color, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Expanded(child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+          Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
         ],
       ),
     );

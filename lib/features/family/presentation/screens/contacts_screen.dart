@@ -445,6 +445,10 @@ class ContactsScreen extends StatelessWidget {
                         ...upcoming.map((c) => _ContactCard(
                               contact: c,
                               onDelete: () => vm.deleteContact(c),
+                              onLogContact: () {
+                                vm.logContact(c);
+                                _snack(context, 'Logged contact with ${c.name}');
+                              },
                             )),
                         const SizedBox(height: 16),
                       ],
@@ -459,6 +463,10 @@ class ContactsScreen extends StatelessWidget {
                         ...rest.map((c) => _ContactCard(
                               contact: c,
                               onDelete: () => vm.deleteContact(c),
+                              onLogContact: () {
+                                vm.logContact(c);
+                                _snack(context, 'Logged contact with ${c.name}');
+                              },
                             )),
                       ],
                     ],
@@ -493,7 +501,8 @@ class ContactsScreen extends StatelessWidget {
 class _ContactCard extends StatelessWidget {
   final Contact contact;
   final VoidCallback onDelete;
-  const _ContactCard({required this.contact, required this.onDelete});
+  final VoidCallback onLogContact;
+  const _ContactCard({required this.contact, required this.onDelete, required this.onLogContact});
 
   @override
   Widget build(BuildContext context) {
@@ -503,6 +512,8 @@ class _ContactCard extends StatelessWidget {
         : days <= 7
             ? AppColors.accent
             : AppColors.textSecondary;
+    final sinceContact = contact.daysSinceContact;
+    final overdue = contact.isContactOverdue;
 
     return Dismissible(
       key: Key(contact.id),
@@ -512,61 +523,112 @@ class _ContactCard extends StatelessWidget {
         padding: const EdgeInsets.only(right: 16),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: AppColors.accentRed.withOpacity(0.2),
+          color: AppColors.accentRed.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Icon(Icons.delete_outline, color: AppColors.accentRed),
       ),
       onDismissed: (_) => onDelete(),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: days == 0
-              ? Border.all(color: AppColors.accentRed.withOpacity(0.5))
-              : days <= 7
-                  ? Border.all(color: AppColors.accent.withOpacity(0.3))
-                  : null,
-        ),
-        child: Row(
-          children: [
-            Text(contact.emoji, style: const TextStyle(fontSize: 28)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: GestureDetector(
+        onDoubleTap: onLogContact,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(12),
+            border: days == 0
+                ? Border.all(color: AppColors.accentRed.withValues(alpha: 0.5))
+                : days <= 7
+                    ? Border.all(color: AppColors.accent.withValues(alpha: 0.3))
+                    : null,
+          ),
+          child: Row(
+            children: [
+              Text(contact.emoji, style: const TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(contact.name,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        )),
+                    Text(
+                      '${contact.relationship[0].toUpperCase()}${contact.relationship.substring(1)} · ${DateFormat('MMMM d').format(contact.birthday)}',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                    // Last contacted indicator
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Row(
+                        children: [
+                          Icon(
+                            overdue ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                            size: 12,
+                            color: overdue ? AppColors.accent : AppColors.accentGreen,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            sinceContact == -1
+                                ? 'Never contacted'
+                                : sinceContact == 0
+                                    ? 'Contacted today'
+                                    : '${sinceContact}d since contact',
+                            style: TextStyle(
+                              color: overdue ? AppColors.accent : AppColors.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
                 children: [
-                  Text(contact.name,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      )),
-                  Text(
-                    '${contact.relationship[0].toUpperCase()}${contact.relationship.substring(1)} · ${DateFormat('MMMM d').format(contact.birthday)}',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: daysColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      days == 0 ? ls.t('today_birthday') : 'in ${days}d',
+                      style: TextStyle(
+                        color: daysColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: onLogContact,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.phone_rounded, size: 11, color: AppColors.accentGreen),
+                          SizedBox(width: 3),
+                          Text('Log', style: TextStyle(color: AppColors.accentGreen, fontSize: 10, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: daysColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                days == 0 ? ls.t('today_birthday') : 'in ${days}d',
-                style: TextStyle(
-                  color: daysColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

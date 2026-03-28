@@ -127,6 +127,27 @@ class ContactsViewModel extends ChangeNotifier {
     return true;
   }
 
+  /// Contacts that haven't been reached in 30+ days (or never).
+  List<Contact> get overdueContacts =>
+      _contacts.where((c) => c.isContactOverdue).toList();
+
+  /// Mark a contact as contacted today.
+  Future<void> logContact(Contact contact) async {
+    contact.lastContacted = DateTime.now();
+
+    if (_useDb) {
+      await ApiService.update('contacts', contact.id, {
+        'last_contacted': contact.lastContacted!.toIso8601String(),
+      });
+    }
+
+    final all = _storage.getContacts();
+    final idx = all.indexWhere((c) => c.id == contact.id);
+    if (idx != -1) all[idx].lastContacted = contact.lastContacted;
+    await _storage.saveContacts(all);
+    notifyListeners();
+  }
+
   Future<void> deleteContact(Contact contact) async {
     if (_useDb) {
       await ApiService.delete('contacts', contact.id);
