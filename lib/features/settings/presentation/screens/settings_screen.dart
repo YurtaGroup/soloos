@@ -10,6 +10,7 @@ import '../../../../services/pro_service.dart';
 import '../../../../services/notification_service.dart';
 import '../../../../services/theme_service.dart';
 import '../../../home/presentation/screens/onboarding_screen.dart';
+import '../../../circles/presentation/screens/circles_screen.dart';
 import 'calendar_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -204,6 +205,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ]),
           if (_biometricAvailable) const SizedBox(height: 14),
+
+          // ── Circles ──────────────────────────────────────────
+          _Section(title: loc.t('circles_section'), children: [
+            GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CirclesScreen())),
+              child: Row(
+                children: [
+                  const Icon(Icons.people_outline_rounded, color: AppColors.primary, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(loc.t('circles_label'),
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                        Text(loc.t('circles_sub'),
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
 
           // ── Subscription ──────────────────────────────────────
           _buildSubscriptionSection(loc),

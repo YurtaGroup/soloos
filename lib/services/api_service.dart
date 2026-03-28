@@ -180,10 +180,19 @@ class ApiService {
     });
   }
 
+  /// Public access for custom endpoints (circles, invites, etc.)
+  static Future<dynamic> directRequest(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) =>
+      _request(method, path, body: body);
+
   // ── Table → URL mapping ─────────────────────────────────────────────────
 
   static String _tablePath(String table) {
     const map = {
+      'circles': '/api/circles',
       'profiles': '/api/profiles',
       'projects': '/api/projects',
       'tasks': '/api/tasks',

@@ -20,6 +20,7 @@ import 'features/health/presentation/viewmodels/habits_view_model.dart';
 import 'features/work/presentation/viewmodels/projects_view_model.dart';
 import 'features/work/presentation/viewmodels/standup_view_model.dart';
 import 'features/family/presentation/viewmodels/contacts_view_model.dart';
+import 'features/circles/presentation/viewmodels/circles_view_model.dart';
 import 'features/home/presentation/screens/onboarding_screen.dart';
 import 'features/home/presentation/screens/dashboard_screen.dart';
 
@@ -76,6 +77,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProjectsViewModel()),
         ChangeNotifierProvider(create: (_) => StandupViewModel()),
         ChangeNotifierProvider(create: (_) => ContactsViewModel()),
+        ChangeNotifierProvider(create: (_) => CirclesViewModel()),
       ],
       child: SoloOSApp(
         isOnboarded: storage.onboardingDone,
