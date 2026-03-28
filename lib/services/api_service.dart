@@ -1,18 +1,30 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'storage_service.dart';
 
 /// Drop-in replacement for SupabaseService.
 /// Talks to the Next.js backend via REST + JWT tokens.
+/// Includes retry with exponential backoff and circuit breaker.
 class ApiService {
   static final _storage = StorageService();
+  static const _secure = FlutterSecureStorage();
   static String? _accessToken;
   static String? _refreshToken;
   static String? _userId;
   static String? _email;
   static bool _initialized = false;
+
+  // ── Retry & Circuit Breaker config ────────────────────────────────────────
+  static const _maxRetries = 2;
+  static const _requestTimeout = Duration(seconds: 15);
+  static int _consecutiveFailures = 0;
+  static DateTime? _circuitOpenUntil;
+  static const _circuitThreshold = 5; // open after 5 consecutive failures
+  static const _circuitCooldown = Duration(seconds: 30);
 
   static String get _baseUrl =>
       dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
@@ -23,12 +35,15 @@ class ApiService {
   static String? get userId => _userId;
   static String? get email => _email;
 
-  /// Call once at startup to restore tokens from local storage.
+  /// Call once at startup to restore tokens from secure storage.
   static Future<void> init() async {
-    _accessToken = _storage.prefs.getString('api_access_token');
-    _refreshToken = _storage.prefs.getString('api_refresh_token');
-    _userId = _storage.prefs.getString('api_user_id');
-    _email = _storage.prefs.getString('api_email');
+    // Migrate from plain SharedPreferences to secure storage (one-time)
+    await _migrateToSecureStorage();
+
+    _accessToken = await _secure.read(key: 'api_access_token');
+    _refreshToken = await _secure.read(key: 'api_refresh_token');
+    _userId = await _secure.read(key: 'api_user_id');
+    _email = await _secure.read(key: 'api_email');
     _initialized = true;
 
     // Validate token if present
@@ -45,6 +60,21 @@ class ApiService {
         }
       }
     }
+  }
+
+  /// One-time migration from SharedPreferences to FlutterSecureStorage.
+  static Future<void> _migrateToSecureStorage() async {
+    final migrated = _storage.prefs.getBool('secure_storage_migrated') ?? false;
+    if (migrated) return;
+
+    for (final key in ['api_access_token', 'api_refresh_token', 'api_user_id', 'api_email']) {
+      final value = _storage.prefs.getString(key);
+      if (value != null) {
+        await _secure.write(key: key, value: value);
+        await _storage.prefs.remove(key); // Remove from plain storage
+      }
+    }
+    await _storage.prefs.setBool('secure_storage_migrated', true);
   }
 
   // ── Auth ─────────────────────────────────────────────────────────────────
@@ -179,9 +209,57 @@ class ApiService {
     return map[table] ?? '/api/$table';
   }
 
-  // ── HTTP internals ──────────────────────────────────────────────────────
+  // ── HTTP internals (with retry + circuit breaker) ───────────────────────
 
   static Future<dynamic> _request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    // Circuit breaker: fail fast if API is known-down
+    if (_circuitOpenUntil != null && DateTime.now().isBefore(_circuitOpenUntil!)) {
+      throw ApiException('API temporarily unavailable. Try again shortly.');
+    }
+
+    ApiException? lastError;
+
+    for (int attempt = 0; attempt <= _maxRetries; attempt++) {
+      try {
+        final result = await _doRequest(method, path, body: body);
+
+        // Success — reset circuit breaker
+        _consecutiveFailures = 0;
+        _circuitOpenUntil = null;
+        return result;
+      } on ApiException catch (e) {
+        // Don't retry client errors (4xx) except 401 (handled inside _doRequest)
+        if (e.statusCode != null && e.statusCode! >= 400 && e.statusCode! < 500) {
+          rethrow;
+        }
+        lastError = e;
+      } on TimeoutException {
+        lastError = ApiException('Request timed out', statusCode: 408);
+      } catch (e) {
+        lastError = ApiException('Network error: $e');
+      }
+
+      // Exponential backoff before retry (200ms, 800ms)
+      if (attempt < _maxRetries) {
+        await Future.delayed(Duration(milliseconds: 200 * (1 << attempt)));
+      }
+    }
+
+    // All retries exhausted — update circuit breaker
+    _consecutiveFailures++;
+    if (_consecutiveFailures >= _circuitThreshold) {
+      _circuitOpenUntil = DateTime.now().add(_circuitCooldown);
+      debugPrint('Circuit breaker OPEN — API calls paused for ${_circuitCooldown.inSeconds}s');
+    }
+
+    throw lastError ?? ApiException('Request failed');
+  }
+
+  static Future<dynamic> _doRequest(
     String method,
     String path, {
     Map<String, dynamic>? body,
@@ -195,23 +273,23 @@ class ApiService {
     http.Response res;
     switch (method) {
       case 'GET':
-        res = await http.get(uri, headers: headers);
+        res = await http.get(uri, headers: headers).timeout(_requestTimeout);
         break;
       case 'POST':
-        res = await http.post(uri, headers: headers, body: jsonEncode(body));
+        res = await http.post(uri, headers: headers, body: jsonEncode(body)).timeout(_requestTimeout);
         break;
       case 'PATCH':
-        res = await http.patch(uri, headers: headers, body: jsonEncode(body));
+        res = await http.patch(uri, headers: headers, body: jsonEncode(body)).timeout(_requestTimeout);
         break;
       case 'DELETE':
         if (body != null) {
           final request = http.Request('DELETE', uri)
             ..headers.addAll(headers)
             ..body = jsonEncode(body);
-          final streamed = await http.Client().send(request);
+          final streamed = await http.Client().send(request).timeout(_requestTimeout);
           res = await http.Response.fromStream(streamed);
         } else {
-          res = await http.delete(uri, headers: headers);
+          res = await http.delete(uri, headers: headers).timeout(_requestTimeout);
         }
         break;
       default:
@@ -221,12 +299,12 @@ class ApiService {
     // Auto-refresh on 401
     if (res.statusCode == 401 && _refreshToken != null) {
       await _doRefresh();
-      return _request(method, path, body: body); // retry once
+      return _doRequest(method, path, body: body); // retry once with new token
     }
 
     if (res.statusCode >= 400) {
       final error = _tryParseError(res.body);
-      throw ApiException(error ?? 'Request failed (${res.statusCode})');
+      throw ApiException(error ?? 'Request failed (${res.statusCode})', statusCode: res.statusCode);
     }
 
     if (res.body.isEmpty) return {};
@@ -257,8 +335,8 @@ class ApiService {
     });
     _accessToken = res['accessToken'];
     _refreshToken = res['refreshToken'];
-    await _storage.prefs.setString('api_access_token', _accessToken!);
-    await _storage.prefs.setString('api_refresh_token', _refreshToken!);
+    await _secure.write(key: 'api_access_token', value: _accessToken!);
+    await _secure.write(key: 'api_refresh_token', value: _refreshToken!);
   }
 
   static Future<void> _saveSession(Map<String, dynamic> res) async {
@@ -266,13 +344,13 @@ class ApiService {
     _refreshToken = res['refreshToken'];
     _userId = res['user']?['id'];
     _email = res['user']?['email'];
-    await _storage.prefs.setString('api_access_token', _accessToken!);
-    await _storage.prefs.setString('api_refresh_token', _refreshToken!);
+    await _secure.write(key: 'api_access_token', value: _accessToken!);
+    await _secure.write(key: 'api_refresh_token', value: _refreshToken!);
     if (_userId != null) {
-      await _storage.prefs.setString('api_user_id', _userId!);
+      await _secure.write(key: 'api_user_id', value: _userId!);
     }
     if (_email != null) {
-      await _storage.prefs.setString('api_email', _email!);
+      await _secure.write(key: 'api_email', value: _email!);
     }
   }
 
@@ -281,10 +359,10 @@ class ApiService {
     _refreshToken = null;
     _userId = null;
     _email = null;
-    await _storage.prefs.remove('api_access_token');
-    await _storage.prefs.remove('api_refresh_token');
-    await _storage.prefs.remove('api_user_id');
-    await _storage.prefs.remove('api_email');
+    await _secure.delete(key: 'api_access_token');
+    await _secure.delete(key: 'api_refresh_token');
+    await _secure.delete(key: 'api_user_id');
+    await _secure.delete(key: 'api_email');
   }
 
   static String? _tryParseError(String body) {
@@ -299,7 +377,8 @@ class ApiService {
 
 class ApiException implements Exception {
   final String message;
-  ApiException(this.message);
+  final int? statusCode;
+  ApiException(this.message, {this.statusCode});
   @override
   String toString() => message;
 }

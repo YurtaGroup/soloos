@@ -17,6 +17,7 @@ dependencies:
 
   # Storage
   shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.4
 
   # Backend
   flutter_dotenv: ^5.2.1

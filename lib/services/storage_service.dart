@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_models.dart';
 
@@ -8,9 +9,20 @@ class StorageService {
   StorageService._internal();
 
   SharedPreferences? _prefs;
+  static const _secure = FlutterSecureStorage();
+  String _cachedApiKey = '';
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    // Load API key from secure storage into memory cache
+    _cachedApiKey = await _secure.read(key: 'claude_api_key') ?? '';
+    // Migrate from plain prefs if needed
+    final plainKey = _prefs!.getString('api_key') ?? '';
+    if (plainKey.isNotEmpty && _cachedApiKey.isEmpty) {
+      _cachedApiKey = plainKey;
+      await _secure.write(key: 'claude_api_key', value: plainKey);
+      await _prefs!.remove('api_key');
+    }
   }
 
   SharedPreferences get prefs {
@@ -22,8 +34,11 @@ class StorageService {
   String get userName => prefs.getString('user_name') ?? '';
   Future<void> setUserName(String v) => prefs.setString('user_name', v);
 
-  String get apiKey => prefs.getString('api_key') ?? '';
-  Future<void> setApiKey(String v) => prefs.setString('api_key', v);
+  String get apiKey => _cachedApiKey;
+  Future<void> setApiKey(String v) async {
+    _cachedApiKey = v;
+    await _secure.write(key: 'claude_api_key', value: v);
+  }
 
   bool get onboardingDone => prefs.getBool('onboarding_done') ?? false;
   Future<void> setOnboardingDone() => prefs.setBool('onboarding_done', true);
