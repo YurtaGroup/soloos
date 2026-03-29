@@ -106,11 +106,11 @@ class HabitsViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteHabit(Habit habit) async {
-    if (_useDb) {
-      await ApiService.delete('habits', habit.id);
-    }
     _habits.remove(habit);
     await _storage.saveHabits(_habits);
     notifyListeners();
+    if (_useDb) {
+      try { await ApiService.delete('habits', habit.id); } catch (_) {}
+    }
   }
 }

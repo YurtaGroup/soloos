@@ -223,12 +223,12 @@ class FinanceViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteDebt(String id) async {
-    if (_useDb) {
-      await ApiService.delete('debts', id);
-    }
     await _repo.deleteDebt(id);
     _debts = _repo.getDebts();
     notifyListeners();
+    if (_useDb) {
+      try { await ApiService.delete('debts', id); } catch (_) {}
+    }
   }
 
   Future<void> markDebtPaid(String id) async {
@@ -261,12 +261,12 @@ class FinanceViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteObligation(String id) async {
-    if (_useDb) {
-      await ApiService.delete('obligations', id);
-    }
     await _repo.deleteObligation(id);
     _obligations = _repo.getObligations();
     notifyListeners();
+    if (_useDb) {
+      try { await ApiService.delete('obligations', id); } catch (_) {}
+    }
   }
 
   // ── Income Stream CRUD ──────────────────────────────────────────────────────
@@ -296,12 +296,12 @@ class FinanceViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteIncomeStream(String id) async {
-    if (_useDb) {
-      await ApiService.delete('income_streams', id);
-    }
     await _repo.deleteIncomeStream(id);
     _incomeStreams = _repo.getIncomeStreams();
     notifyListeners();
+    if (_useDb) {
+      try { await ApiService.delete('income_streams', id); } catch (_) {}
+    }
   }
 
   // ── Expense CRUD ────────────────────────────────────────────────────────────
@@ -316,12 +316,12 @@ class FinanceViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteExpense(String id) async {
-    if (_useDb) {
-      await ApiService.delete('expenses', id);
-    }
     await _repo.deleteExpense(id);
     _expenses = _repo.getExpenses();
     notifyListeners();
+    if (_useDb) {
+      try { await ApiService.delete('expenses', id); } catch (_) {}
+    }
   }
 
   // ── Confirm Parsed Income / Expense ─────────────────────────────────────────

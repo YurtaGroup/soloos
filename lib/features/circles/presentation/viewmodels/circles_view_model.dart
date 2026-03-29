@@ -29,6 +29,8 @@ class CirclesViewModel extends ChangeNotifier {
     return members.values.toList();
   }
 
+  void reload() => loadCircles();
+
   Future<void> loadCircles() async {
     if (!ApiService.isAuthenticated) return;
     _loading = true;

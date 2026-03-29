@@ -84,12 +84,12 @@ class IdeasViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteIdea(String ideaId) async {
-    if (_useDb) {
-      await ApiService.delete('ideas', ideaId);
-    }
     final all = _storage.getIdeas()..removeWhere((i) => i.id == ideaId);
     await _storage.saveIdeas(all);
     await _loadIdeas();
+    if (_useDb) {
+      try { await ApiService.delete('ideas', ideaId); } catch (_) {}
+    }
   }
 
   Future<void> updateStatus(String ideaId, IdeaStatus status) async {

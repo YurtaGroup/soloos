@@ -149,6 +149,7 @@ class _AuthGateState extends State<_AuthGate> {
     context.read<ContactsViewModel>().reload();
     context.read<FinanceViewModel>().reload();
     context.read<FamilyViewModel>().reload();
+    context.read<CirclesViewModel>().reload();
   }
 
   void _reloadAllForDemo(BuildContext context) {
@@ -160,6 +161,7 @@ class _AuthGateState extends State<_AuthGate> {
     context.read<ContactsViewModel>().reload();
     context.read<FinanceViewModel>().reload();
     context.read<FamilyViewModel>().reload();
+    context.read<CirclesViewModel>().reload();
   }
 
   @override

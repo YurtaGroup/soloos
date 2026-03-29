@@ -149,11 +149,11 @@ class ContactsViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteContact(Contact contact) async {
-    if (_useDb) {
-      await ApiService.delete('contacts', contact.id);
-    }
     _contacts.remove(contact);
     await _storage.saveContacts(_contacts);
     notifyListeners();
+    if (_useDb) {
+      try { await ApiService.delete('contacts', contact.id); } catch (_) {}
+    }
   }
 }

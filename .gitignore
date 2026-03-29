@@ -12,6 +12,11 @@ build/
 .DS_Store
 .env
 
+# Signing
+keystore/
+*.jks
+*.keystore
+
 # Vercel API
 api/node_modules/
 api/dist/

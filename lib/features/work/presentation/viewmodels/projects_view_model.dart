@@ -78,12 +78,14 @@ class ProjectsViewModel extends ChangeNotifier {
 
   Future<void> deleteProject(int index) async {
     final project = _projects[index];
-    if (_useDb) {
-      await ApiService.delete('projects', project.id);
-    }
     _projects.removeAt(index);
     await _storage.saveProjects(_projects);
     notifyListeners();
+    if (_useDb) {
+      try {
+        await ApiService.delete('projects', project.id);
+      } catch (_) {}
+    }
   }
 
   Future<void> saveProjects() async {
@@ -146,10 +148,14 @@ class ProjectsViewModel extends ChangeNotifier {
 
   Future<void> deleteTask(Project project, Task task) async {
     project.tasks.remove(task);
-    if (_useDb) {
-      await ApiService.delete('tasks', task.id);
-    }
     await _saveAndNotify();
+    if (_useDb) {
+      try {
+        await ApiService.delete('tasks', task.id);
+      } catch (_) {
+        // Local delete already persisted; backend sync can fail gracefully
+      }
+    }
   }
 
   Future<void> _saveAndNotify() async {

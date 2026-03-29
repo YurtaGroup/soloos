@@ -174,11 +174,11 @@ class FamilyViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteReminder(String id) async {
-    if (_useDb) {
-      await ApiService.delete('family_reminders', id);
-    }
     await _repo.deleteReminder(id);
     await _refresh();
+    if (_useDb) {
+      try { await ApiService.delete('family_reminders', id); } catch (_) {}
+    }
   }
 
   // ── Notes ──────────────────────────────────────────────────────────────────
@@ -211,14 +211,14 @@ class FamilyViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteNote(String id) async {
-    if (_useDb) {
-      await ApiService.delete('relationship_notes', id);
-    }
     await _repo.deleteNote(id);
     for (final list in _notesCache.values) {
       list.removeWhere((n) => n.id == id);
     }
     notifyListeners();
+    if (_useDb) {
+      try { await ApiService.delete('relationship_notes', id); } catch (_) {}
+    }
   }
 
   // ── Suggestions ────────────────────────────────────────────────────────────
