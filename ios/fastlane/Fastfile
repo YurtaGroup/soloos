@@ -1,0 +1,46 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build Flutter IPA and upload to TestFlight"
+  lane :beta do
+    # Step 1: Connect to App Store Connect via API key
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"] || "Z7MGS5ZUZ5",
+      issuer_id: ENV["ASC_ISSUER_ID"] || "bba04448-ff86-400c-8a1c-9828ce554f07",
+      key_filepath: ENV["ASC_KEY_PATH"] || File.expand_path("~/.appstoreconnect/private_keys/AuthKey_Z7MGS5ZUZ5.p8"),
+      duration: 1200,
+      in_house: false,
+    )
+
+    # Step 2: Build Flutter IPA
+    Dir.chdir("..") do
+      sh("flutter", "build", "ipa", "--release", "--export-options-plist=ios/ExportOptions.plist")
+    end
+
+    # Step 3: Upload to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: "../build/ios/ipa/Solo OS.ipa",
+      skip_waiting_for_build_processing: true,
+      changelog: "Latest build from main branch",
+    )
+  end
+
+  desc "Just upload existing IPA to TestFlight (skip build)"
+  lane :upload do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"] || "Z7MGS5ZUZ5",
+      issuer_id: ENV["ASC_ISSUER_ID"] || "bba04448-ff86-400c-8a1c-9828ce554f07",
+      key_filepath: ENV["ASC_KEY_PATH"] || File.expand_path("~/.appstoreconnect/private_keys/AuthKey_Z7MGS5ZUZ5.p8"),
+      duration: 1200,
+      in_house: false,
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: "../build/ios/ipa/Solo OS.ipa",
+      skip_waiting_for_build_processing: true,
+      changelog: "Latest build from main branch",
+    )
+  end
+end

@@ -1,0 +1,10 @@
+app_identifier("com.timurmone.soloos")
+team_id("PJPHU42VG4")
+
+# App Store Connect API Key (set via environment or key file)
+# Generate at: https://appstoreconnect.apple.com/access/integrations/api
+# Then set these env vars:
+#   APP_STORE_CONNECT_API_KEY_KEY_ID
+#   APP_STORE_CONNECT_API_KEY_ISSUER_ID
+#   APP_STORE_CONNECT_API_KEY_KEY (base64-encoded .p8 contents)
+# Or place the .p8 file and reference it in Fastfile
