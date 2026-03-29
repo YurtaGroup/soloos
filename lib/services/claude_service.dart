@@ -125,6 +125,42 @@ class ClaudeService {
     }
   }
 
+  // ─── Onboarding Setup ─────────────────────────────────────────
+  /// Generate personalized project tasks, habit, and first digest from onboarding answers.
+  /// Returns JSON with: project_tasks (list of strings), habit_emoji, digest (string).
+  Future<String> generateOnboardingSetup({
+    required String userName,
+    required String business,
+    required String challenge,
+    required String habit,
+  }) async {
+    const system = '''You are Solo OS, an AI operating system for solopreneurs.
+The user just installed the app and told you about their business, challenge, and a habit they want.
+Generate personalized data to populate their workspace. Return ONLY valid JSON, no markdown.''';
+
+    final prompt = '''
+User: $userName
+Business: $business
+Biggest challenge this week: $challenge
+Habit they want to nail: $habit
+
+Return this exact JSON structure:
+{
+  "project_name": "their business name, short",
+  "project_tasks": ["task 1", "task 2", "task 3", "task 4"],
+  "task_priorities": ["high", "high", "medium", "medium"],
+  "habit_name": "concise habit name based on their answer",
+  "habit_emoji": "one emoji that fits",
+  "digest": "A personalized 4-5 sentence morning briefing addressing them by name, referencing their business, challenge, and habit. Be energizing and specific. Use emoji headers."
+}
+
+Tasks should be real, actionable next steps for their specific business.
+Make the digest feel like a brilliant chief of staff who already knows them.
+''';
+
+    return _call(prompt, systemPrompt: system, maxTokens: 600);
+  }
+
   // ─── Daily AI Digest ──────────────────────────────────────────
   Future<String> generateDailyDigest({
     required String userName,
