@@ -6,6 +6,7 @@ import '../../../gamification/domain/models/gamification_event.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/claude_service.dart';
+import '../../../../services/analytics_service.dart';
 
 class IdeasViewModel extends ChangeNotifier {
   IdeasViewModel({
@@ -79,6 +80,7 @@ class IdeasViewModel extends ChangeNotifier {
     await _storage.saveIdeas(all);
     GamificationEventBus.emit(GamificationEventType.ideaCreated,
         description: title.trim());
+    AnalyticsService().ideaCreated();
     await _loadIdeas();
     return true;
   }

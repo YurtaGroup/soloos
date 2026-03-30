@@ -1,7 +1,7 @@
 name: solo_os
 description: Solo OS - Operating System for Solopreneurs
 publish_to: 'none'
-version: 1.0.0+13
+version: 1.0.0+16
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -53,6 +53,8 @@ dependencies:
   googleapis: ^13.2.0
   googleapis_auth: ^1.6.0
   extension_google_sign_in_as_googleapis_auth: ^2.0.12
+  sign_in_with_apple: ^7.0.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

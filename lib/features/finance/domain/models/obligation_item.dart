@@ -71,6 +71,7 @@ class ObligationItem {
   final String id;
   final String title;
   final ObligationCategory category;
+  final String scope; // personal, business, family
   final double amount;
   final String currency;
   final ObligationFrequency frequency;
@@ -84,6 +85,7 @@ class ObligationItem {
     String? id,
     required this.title,
     required this.category,
+    this.scope = 'personal',
     required this.amount,
     this.currency = 'USD',
     this.frequency = ObligationFrequency.monthly,
@@ -122,6 +124,7 @@ class ObligationItem {
         'id': id,
         'title': title,
         'category': category.name,
+        'scope': scope,
         'amount': amount,
         'currency': currency,
         'frequency': frequency.name,
@@ -139,6 +142,7 @@ class ObligationItem {
           (e) => e.name == j['category'],
           orElse: () => ObligationCategory.other,
         ),
+        scope: j['scope'] ?? 'personal',
         amount: (j['amount'] as num).toDouble(),
         currency: j['currency'] ?? 'USD',
         frequency: ObligationFrequency.values.firstWhere(
@@ -159,6 +163,7 @@ class ObligationItem {
           (e) => e.name == r['category'],
           orElse: () => ObligationCategory.other,
         ),
+        scope: r['scope'] ?? 'personal',
         amount: (r['amount'] as num?)?.toDouble() ?? 0,
         currency: r['currency'] ?? 'USD',
         frequency: ObligationFrequency.values.firstWhere(
@@ -176,6 +181,7 @@ class ObligationItem {
         'id': id,
         'title': title,
         'category': category.name,
+        'scope': scope,
         'amount': amount,
         'currency': currency,
         'frequency': frequency.name,

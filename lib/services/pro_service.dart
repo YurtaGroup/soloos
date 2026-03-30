@@ -22,8 +22,8 @@ class ProService extends ChangeNotifier {
 
   // ── RevenueCat config ─────────────────────────────────────────
   // Set these in RevenueCat dashboard → API Keys
-  static const _iosApiKey = 'appl_YOUR_IOS_KEY';
-  static const _androidApiKey = 'goog_YOUR_ANDROID_KEY';
+  static const _iosApiKey = 'test_DhNYipyoUnwqgTmNPUqXdpgwHPs';
+  static const _androidApiKey = 'test_DhNYipyoUnwqgTmNPUqXdpgwHPs';
 
   // Product identifiers (must match App Store Connect / Google Play Console)
   static const entitlementId = 'pro';

@@ -16,7 +16,6 @@ import '../../../work/presentation/viewmodels/standup_view_model.dart';
 import '../../../family/presentation/viewmodels/contacts_view_model.dart';
 import '../../../finance/presentation/viewmodels/finance_view_model.dart';
 import '../../../family/presentation/viewmodels/family_viewmodel.dart';
-import '../../../circles/presentation/viewmodels/circles_view_model.dart';
 import 'dashboard_screen.dart';
 
 const _uuid = Uuid();
@@ -94,7 +93,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     context.read<ContactsViewModel>().reload();
     context.read<FinanceViewModel>().reload();
     context.read<FamilyViewModel>().reload();
-    context.read<CirclesViewModel>().reload();
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const DashboardScreen()),

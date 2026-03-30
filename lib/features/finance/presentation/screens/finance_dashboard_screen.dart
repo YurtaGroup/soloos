@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../../services/api_service.dart';
 import '../../../../theme/app_theme.dart';
 import '../../domain/models/debt_item.dart';
 import '../../domain/models/obligation_item.dart';
@@ -22,10 +24,92 @@ class FinanceDashboardScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
+          // Scope toggle
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                for (final entry in [
+                  ('all', 'All'),
+                  ('personal', 'Personal'),
+                  ('business', 'Business'),
+                  ('family', 'Family'),
+                ])
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => vm.setScopeFilter(entry.$1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: vm.scopeFilter == entry.$1
+                              ? AppColors.primary.withValues(alpha: 0.15)
+                              : AppColors.card,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: vm.scopeFilter == entry.$1
+                                ? AppColors.primary.withValues(alpha: 0.4)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Text(
+                          entry.$2,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: vm.scopeFilter == entry.$1
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: vm.scopeFilter == entry.$1
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Expanded(
             child: CustomScrollView(
               slivers: [
                 _CashFlowHeader(vm: vm),
+                if (vm.scopeFilter == 'family' && ApiService.isAuthenticated)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: GestureDetector(
+                        onTap: () => _showPartnerSheet(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.person_add_rounded, color: AppColors.primary, size: 20),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Family Finance Sharing',
+                                        style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                                    Text('Invite your partner to shared family expenses',
+                                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 if (vm.overdueDebts.isNotEmpty) _SliverOverdueAlert(vm: vm),
                 _SliverSection(title: '💡 Recommended Next Payment', child: _RecommendedCard(vm: vm)),
                 _SliverSection(title: '📅 Due This Week', child: _DueThisWeek(vm: vm)),
@@ -72,6 +156,15 @@ class FinanceDashboardScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPartnerSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _PartnerSheet(),
     );
   }
 
@@ -941,6 +1034,231 @@ class _SummaryRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
           Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PartnerSheet extends StatefulWidget {
+  const _PartnerSheet();
+  @override
+  State<_PartnerSheet> createState() => _PartnerSheetState();
+}
+
+class _PartnerSheetState extends State<_PartnerSheet> {
+  List<Map<String, dynamic>> _partners = [];
+  bool _loading = true;
+  String? _error;
+  final _codeCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPartners();
+  }
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPartners() async {
+    try {
+      final data = await ApiService.directRequest('GET', '/api/finance/partners');
+      setState(() {
+        _partners = List<Map<String, dynamic>>.from(data);
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = 'Failed to load partners';
+      });
+    }
+  }
+
+  Future<void> _generateInvite() async {
+    try {
+      final data = await ApiService.directRequest('POST', '/api/finance/partners/invite');
+      final code = data['code'] as String;
+      if (mounted) {
+        Share.share('Join my family finances on Solo OS! Use this code: $code');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to generate invite')),
+        );
+      }
+    }
+  }
+
+  Future<void> _joinWithCode() async {
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty) return;
+    try {
+      await ApiService.directRequest('POST', '/api/finance/partners/join', body: {'code': code});
+      _codeCtrl.clear();
+      await _loadPartners();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Joined! You can now see shared family finances.')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(width: 36, height: 4, decoration: BoxDecoration(
+              color: AppColors.textMuted.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            )),
+          ),
+          const SizedBox(height: 20),
+          const Text('Family Finance Partners',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          const Text('People who can see and add to your family expenses',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          const SizedBox(height: 20),
+
+          // Current partners
+          if (_loading)
+            const Center(child: CircularProgressIndicator(strokeWidth: 2))
+          else if (_partners.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Text('👨‍👩‍👧', style: TextStyle(fontSize: 20)),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('No partners yet. Invite someone to get started!',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+                ],
+              ),
+            )
+          else
+            ...(_partners.map((p) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                    child: Text(
+                      (p['displayName'] as String? ?? p['email'] as String? ?? '?')[0].toUpperCase(),
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p['displayName'] ?? '',
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                        Text(p['email'] ?? '',
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ))),
+
+          const SizedBox(height: 16),
+
+          // Invite button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: _generateInvite,
+              icon: const Icon(Icons.share_rounded, size: 18),
+              label: const Text('Invite Partner', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Join with code
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _codeCtrl,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Enter invite code',
+                    hintStyle: const TextStyle(color: AppColors.textMuted),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _joinWithCode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.card,
+                    foregroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                  ),
+                  child: const Text('Join', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: AppColors.accentRed, fontSize: 12)),
+          ],
         ],
       ),
     );

@@ -4,6 +4,7 @@ import '../../domain/models/project.dart';
 import '../../domain/models/task.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/api_service.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
 
@@ -73,6 +74,7 @@ class ProjectsViewModel extends ChangeNotifier {
     final projects = _storage.getProjects()..add(p);
     await _storage.saveProjects(projects);
     await _loadProjects();
+    AnalyticsService().projectCreated();
     return true;
   }
 
@@ -109,9 +111,14 @@ class ProjectsViewModel extends ChangeNotifier {
     await _saveAndNotify();
   }
 
-  Future<void> editTask(Task task, {String? title, String? priority, DateTime? dueDate, bool clearDueDate = false}) async {
+  Future<void> editTask(Task task, {String? title, String? priority, String? status, String? url, DateTime? dueDate, bool clearDueDate = false}) async {
     if (title != null) task.title = title.trim();
     if (priority != null) task.priority = priority;
+    if (status != null) {
+      task.status = status;
+      task.isDone = status == 'done';
+    }
+    if (url != null) task.url = url.isEmpty ? null : url;
     if (clearDueDate) {
       task.dueDate = null;
     } else if (dueDate != null) {
@@ -122,6 +129,8 @@ class ProjectsViewModel extends ChangeNotifier {
       await ApiService.update('tasks', task.id, {
         'title': task.title,
         'priority': task.priority,
+        'status': task.status,
+        'url': task.url,
         'due_date': task.dueDate?.toIso8601String(),
       });
     }
@@ -132,15 +141,17 @@ class ProjectsViewModel extends ChangeNotifier {
   Future<void> toggleTask(Task task) async {
     final completing = !task.isDone;
     task.isDone = completing;
+    task.status = completing ? 'done' : 'todo';
     if (completing) {
       GamificationEventBus.emit(
         GamificationEventType.taskCompleted,
         description: task.title,
       );
+      AnalyticsService().taskCompleted();
     }
 
     if (_useDb) {
-      await ApiService.update('tasks', task.id, {'is_done': task.isDone});
+      await ApiService.update('tasks', task.id, {'is_done': task.isDone, 'status': task.status});
     }
 
     await _saveAndNotify();

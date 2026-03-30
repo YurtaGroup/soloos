@@ -32,6 +32,7 @@ class DebtItem {
   final String title;
   final String creditorName;
   final DebtCategory category;
+  final String scope; // personal, business, family
   final double originalAmount;
   double remainingAmount;
   final String currency;
@@ -48,6 +49,7 @@ class DebtItem {
     required this.title,
     required this.creditorName,
     required this.category,
+    this.scope = 'personal',
     required this.originalAmount,
     double? remainingAmount,
     this.currency = 'USD',
@@ -82,6 +84,7 @@ class DebtItem {
         'title': title,
         'creditorName': creditorName,
         'category': category.name,
+        'scope': scope,
         'originalAmount': originalAmount,
         'remainingAmount': remainingAmount,
         'currency': currency,
@@ -102,6 +105,7 @@ class DebtItem {
           (e) => e.name == j['category'],
           orElse: () => DebtCategory.other,
         ),
+        scope: j['scope'] ?? 'personal',
         originalAmount: (j['originalAmount'] as num).toDouble(),
         remainingAmount: (j['remainingAmount'] as num).toDouble(),
         currency: j['currency'] ?? 'USD',
@@ -130,6 +134,7 @@ class DebtItem {
           (e) => e.name == r['category'],
           orElse: () => DebtCategory.other,
         ),
+        scope: r['scope'] ?? 'personal',
         originalAmount: (r['original_amount'] as num?)?.toDouble() ?? 0,
         remainingAmount: (r['remaining_amount'] as num?)?.toDouble() ?? 0,
         currency: r['currency'] ?? 'USD',
@@ -155,6 +160,7 @@ class DebtItem {
         'title': title,
         'creditor_name': creditorName,
         'category': category.name,
+        'scope': scope,
         'original_amount': originalAmount,
         'remaining_amount': remainingAmount,
         'currency': currency,

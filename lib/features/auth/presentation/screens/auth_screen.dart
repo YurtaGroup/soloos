@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../services/api_service.dart';
 import '../../../../theme/app_theme.dart';
 
@@ -52,6 +54,56 @@ class _AuthScreenState extends State<AuthScreen> {
     );
     if (ok && mounted) {
       widget.onAuthSuccess?.call();
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final identityToken = credential.identityToken;
+      final authorizationCode = credential.authorizationCode;
+      if (identityToken == null) {
+        setState(() => _error = 'Apple Sign-In failed: no token received');
+        return;
+      }
+
+      // Apple only provides name on first sign-in
+      String? displayName;
+      if (credential.givenName != null || credential.familyName != null) {
+        displayName = [credential.givenName, credential.familyName]
+            .where((s) => s != null && s.isNotEmpty)
+            .join(' ');
+      }
+
+      await ApiService.signInWithApple(
+        identityToken: identityToken,
+        authorizationCode: authorizationCode,
+        email: credential.email,
+        displayName: displayName,
+      );
+
+      widget.onAuthSuccess?.call();
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code != AuthorizationErrorCode.canceled) {
+        setState(() => _error = 'Apple Sign-In failed. Please try again.');
+      }
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() => _error = 'Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -211,6 +263,38 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                   ),
                 ),
+
+                // Apple Sign-In
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: AppColors.textMuted.withAlpha(60))),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text('or', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                      ),
+                      Expanded(child: Divider(color: AppColors.textMuted.withAlpha(60))),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _loading ? null : _signInWithApple,
+                      icon: const Icon(Icons.apple, size: 22),
+                      label: const Text('Sign in with Apple',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 20),
 

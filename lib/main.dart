@@ -11,6 +11,7 @@ import 'services/api_service.dart';
 import 'services/claude_service.dart';
 import 'services/notification_service.dart';
 import 'services/theme_service.dart';
+import 'services/analytics_service.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
 import 'features/ideas/presentation/viewmodels/ideas_view_model.dart';
 import 'features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
@@ -21,7 +22,6 @@ import 'features/health/presentation/viewmodels/habits_view_model.dart';
 import 'features/work/presentation/viewmodels/projects_view_model.dart';
 import 'features/work/presentation/viewmodels/standup_view_model.dart';
 import 'features/family/presentation/viewmodels/contacts_view_model.dart';
-import 'features/circles/presentation/viewmodels/circles_view_model.dart';
 import 'features/home/presentation/screens/onboarding_screen.dart';
 import 'features/home/presentation/screens/dashboard_screen.dart';
 
@@ -58,6 +58,9 @@ void main() async {
   // Initialize notifications
   await NotificationService().init();
 
+  // Initialize analytics (batched, offline-safe)
+  await AnalyticsService().init();
+
   final localeService = LocaleService();
   await localeService.init();
 
@@ -79,7 +82,6 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProjectsViewModel()),
         ChangeNotifierProvider(create: (_) => StandupViewModel()),
         ChangeNotifierProvider(create: (_) => ContactsViewModel()),
-        ChangeNotifierProvider(create: (_) => CirclesViewModel()),
       ],
       child: SoloOSApp(
         isOnboarded: storage.onboardingDone,
@@ -151,7 +153,6 @@ class _AuthGateState extends State<_AuthGate> {
     context.read<ContactsViewModel>().reload();
     context.read<FinanceViewModel>().reload();
     context.read<FamilyViewModel>().reload();
-    context.read<CirclesViewModel>().reload();
   }
 
   void _reloadAllForDemo(BuildContext context) {
@@ -163,7 +164,6 @@ class _AuthGateState extends State<_AuthGate> {
     context.read<ContactsViewModel>().reload();
     context.read<FinanceViewModel>().reload();
     context.read<FamilyViewModel>().reload();
-    context.read<CirclesViewModel>().reload();
   }
 
   @override

@@ -36,6 +36,7 @@ class Expense {
   final double amount;
   final String currency;
   final ExpenseCategory category;
+  final String scope; // personal, business, family
   final DateTime date;
   final String? notes;
   final DateTime createdAt;
@@ -46,6 +47,7 @@ class Expense {
     required this.amount,
     this.currency = 'USD',
     this.category = ExpenseCategory.other,
+    this.scope = 'personal',
     DateTime? date,
     this.notes,
     DateTime? createdAt,
@@ -59,6 +61,7 @@ class Expense {
         'amount': amount,
         'currency': currency,
         'category': category.name,
+        'scope': scope,
         'date': date.toIso8601String(),
         'notes': notes,
         'createdAt': createdAt.toIso8601String(),
@@ -73,6 +76,7 @@ class Expense {
           (e) => e.name == j['category'],
           orElse: () => ExpenseCategory.other,
         ),
+        scope: j['scope'] ?? 'personal',
         date: DateTime.parse(j['date']),
         notes: j['notes'],
         createdAt: DateTime.parse(j['createdAt']),
@@ -87,6 +91,7 @@ class Expense {
           (e) => e.name == r['category'],
           orElse: () => ExpenseCategory.other,
         ),
+        scope: r['scope'] ?? 'personal',
         date: DateTime.tryParse(r['date'] ?? '') ?? DateTime.now(),
         notes: r['notes'],
         createdAt: DateTime.tryParse(r['created_at'] ?? '') ?? DateTime.now(),
@@ -98,6 +103,7 @@ class Expense {
         'amount': amount,
         'currency': currency,
         'category': category.name,
+        'scope': scope,
         'date': date.toIso8601String(),
         'notes': notes,
         'created_at': createdAt.toIso8601String(),

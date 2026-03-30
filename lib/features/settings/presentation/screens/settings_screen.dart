@@ -9,8 +9,9 @@ import '../../../../services/google_calendar_service.dart';
 import '../../../../services/pro_service.dart';
 import '../../../../services/notification_service.dart';
 import '../../../../services/theme_service.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../home/presentation/screens/onboarding_screen.dart';
-import '../../../circles/presentation/screens/circles_screen.dart';
+import '../../../admin/presentation/screens/admin_dashboard_screen.dart';
 import 'calendar_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -206,32 +207,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ]),
           if (_biometricAvailable) const SizedBox(height: 14),
 
-          // ── Circles ──────────────────────────────────────────
-          _Section(title: loc.t('circles_section'), children: [
-            GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CirclesScreen())),
-              child: Row(
-                children: [
-                  const Icon(Icons.people_outline_rounded, color: AppColors.primary, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(loc.t('circles_label'),
-                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                        Text(loc.t('circles_sub'),
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-                ],
-              ),
-            ),
-          ]),
-          const SizedBox(height: 14),
-
           // ── Subscription ──────────────────────────────────────
           _buildSubscriptionSection(loc),
           const SizedBox(height: 14),
@@ -392,6 +367,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
+            ),
+          ]),
+          const SizedBox(height: 14),
+
+          // ── Admin (only for you) ──────────────────────────────
+          _Section(title: 'COMMAND CENTER', children: [
+            GestureDetector(
+              onTap: () {
+                AnalyticsService().featureUsed('admin_dashboard');
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.dashboard_rounded, color: AppColors.accent, size: 22),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Admin Dashboard',
+                            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                        Text('Users, metrics, analytics',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                ],
+              ),
             ),
           ]),
           const SizedBox(height: 14),

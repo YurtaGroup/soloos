@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
 import '../../data/repositories/local_finance_repository.dart';
@@ -29,11 +30,24 @@ class FinanceViewModel extends ChangeNotifier {
   List<Expense> _expenses = [];
   bool _isParsingInput = false;
   ParsedFinanceInput? _pendingInput;
+  String _scopeFilter = 'all'; // all, personal, business, family
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
-  List<DebtItem> get debts => List.unmodifiable(_debts);
-  List<ObligationItem> get obligations => List.unmodifiable(_obligations);
+  String get scopeFilter => _scopeFilter;
+
+  void setScopeFilter(String scope) {
+    _scopeFilter = scope;
+    notifyListeners();
+  }
+
+  List<T> _filterByScope<T>(List<T> items, String Function(T) getScope) {
+    if (_scopeFilter == 'all') return items;
+    return items.where((i) => getScope(i) == _scopeFilter).toList();
+  }
+
+  List<DebtItem> get debts => _filterByScope(_debts, (d) => d.scope);
+  List<ObligationItem> get obligations => _filterByScope(_obligations, (o) => o.scope);
   bool get isParsingInput => _isParsingInput;
   ParsedFinanceInput? get pendingInput => _pendingInput;
 
@@ -57,9 +71,9 @@ class FinanceViewModel extends ChangeNotifier {
 
   // ── Income & Expense Getters ────────────────────────────────────────────────
 
-  List<IncomeStream> get incomeStreams => List.unmodifiable(_incomeStreams);
+  List<IncomeStream> get incomeStreams => _filterByScope(_incomeStreams, (i) => i.scope);
   List<IncomeStream> get activeIncomeStreams =>
-      _incomeStreams.where((i) => i.isActive).toList();
+      incomeStreams.where((i) => i.isActive).toList();
   List<IncomeStream> get recurringIncomeStreams =>
       activeIncomeStreams.where((i) => !i.isOneTime).toList();
   List<IncomeStream> get oneTimeIncomes =>
@@ -71,7 +85,7 @@ class FinanceViewModel extends ChangeNotifier {
         .where((i) => i.date != null && i.date!.month == now.month && i.date!.year == now.year)
         .toList();
   }
-  List<Expense> get expenses => List.unmodifiable(_expenses);
+  List<Expense> get expenses => _filterByScope(_expenses, (e) => e.scope);
 
   List<Expense> get thisMonthExpenses {
     final now = DateTime.now();
@@ -312,6 +326,7 @@ class FinanceViewModel extends ChangeNotifier {
     }
     await _repo.saveExpense(expense);
     _expenses = _repo.getExpenses();
+    AnalyticsService().expenseLogged(expense.amount, expense.currency);
     notifyListeners();
   }
 

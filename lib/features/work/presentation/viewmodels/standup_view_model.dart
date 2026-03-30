@@ -4,6 +4,7 @@ import '../../domain/models/standup_log.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/claude_service.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
 
@@ -92,6 +93,8 @@ class StandupViewModel extends ChangeNotifier {
     final logs = _storage.getStandupLogs()..insert(0, log);
     await _storage.saveStandupLogs(logs);
     GamificationEventBus.emit(GamificationEventType.standupCompleted);
+    AnalyticsService().standupSubmitted();
+    AnalyticsService().aiCall('standup_analysis');
 
     _loading = false;
     _aiResponse = aiResp;

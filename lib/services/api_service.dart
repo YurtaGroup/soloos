@@ -108,6 +108,23 @@ class ApiService {
     return res;
   }
 
+  static Future<Map<String, dynamic>> signInWithApple({
+    required String identityToken,
+    required String authorizationCode,
+    String? email,
+    String? displayName,
+  }) async {
+    final body = {
+      'identityToken': identityToken,
+      'authorizationCode': authorizationCode,
+      if (email != null) 'email': email,
+      if (displayName != null) 'displayName': displayName,
+    };
+    final res = await _requestNoAuth('POST', '/api/auth/apple', body: body);
+    await _saveSession(res);
+    return res;
+  }
+
   static Future<void> signOut() async {
     await _clearSession();
   }

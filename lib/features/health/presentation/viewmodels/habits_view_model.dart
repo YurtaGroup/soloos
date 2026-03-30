@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/habit.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/api_service.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../gamification/data/services/gamification_event_bus.dart';
 import '../../../gamification/domain/models/gamification_event.dart';
 
@@ -78,6 +79,7 @@ class HabitsViewModel extends ChangeNotifier {
         GamificationEventType.habitCompleted,
         description: habit.name,
       );
+      AnalyticsService().habitCompleted(habit.name);
       if (_habits.every((h) => h.isCompletedToday())) {
         GamificationEventBus.emit(GamificationEventType.allHabitsCompleted);
       }
