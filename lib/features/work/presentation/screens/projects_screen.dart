@@ -130,12 +130,19 @@ class ProjectsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Work'),
         actions: [
-          if (ApiService.isAuthenticated)
-            IconButton(
-              icon: const Icon(Icons.group_add_outlined, color: AppColors.textSecondary, size: 22),
-              onPressed: () => _showJoinDialog(context),
-              tooltip: 'Join project',
-            ),
+          IconButton(
+            icon: const Icon(Icons.group_add_outlined, color: AppColors.textSecondary, size: 22),
+            onPressed: () {
+              if (!ApiService.isAuthenticated) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sign in to join a project')),
+                );
+                return;
+              }
+              _showJoinDialog(context);
+            },
+            tooltip: 'Join project',
+          ),
           IconButton(
             icon: const Icon(Icons.add, color: AppColors.workColor),
             onPressed: () => _showAddDialog(context, vm),
@@ -406,15 +413,7 @@ class _ProjectCardState extends State<_ProjectCard> {
                       ),
                       Text('${p.completedTasks}/${p.tasks.length}',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                      const SizedBox(width: 4),
-                      if (ApiService.isAuthenticated)
-                        GestureDetector(
-                          onTap: _inviteToProject,
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            child: Icon(Icons.person_add_outlined, color: AppColors.textMuted, size: 18),
-                          ),
-                        ),
+                      const SizedBox(width: 8),
                       AnimatedRotation(
                         turns: _expanded ? 0.5 : 0,
                         duration: const Duration(milliseconds: 200),
@@ -480,7 +479,39 @@ class _ProjectCardState extends State<_ProjectCard> {
                     onDelete: () { vm.deleteTask(p, task); setState(() {}); },
                     onEdit: () => _editTask(context, vm, task),
                   )),
-                const SizedBox(height: 8),
+                const Divider(height: 1, color: Color(0xFF252535)),
+                // Invite collaborator row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (!ApiService.isAuthenticated) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Sign in to invite collaborators')),
+                        );
+                        return;
+                      }
+                      _inviteToProject();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.person_add_rounded, color: AppColors.primary, size: 16),
+                          SizedBox(width: 8),
+                          Text('Invite collaborator',
+                            style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
             crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
@@ -528,7 +559,7 @@ class _KanbanBoard extends StatelessWidget {
 
   double _boardHeight(int todo, int inProgress, int done) {
     final max = [todo, inProgress, done].reduce((a, b) => a > b ? a : b);
-    return (max * 72.0 + 44).clamp(120.0, 500.0);
+    return (max * 76.0 + 48).clamp(140.0, 400.0);
   }
 }
 

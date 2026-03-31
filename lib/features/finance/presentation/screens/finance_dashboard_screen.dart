@@ -25,12 +25,19 @@ class FinanceDashboardScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Finance'),
         actions: [
-          if (ApiService.isAuthenticated)
-            IconButton(
-              icon: const Icon(Icons.people_outline_rounded, color: AppColors.textSecondary, size: 22),
-              onPressed: () => _showPartnerSheet(context),
-              tooltip: 'Family partners',
-            ),
+          IconButton(
+            icon: const Icon(Icons.people_outline_rounded, color: AppColors.textSecondary, size: 22),
+            onPressed: () {
+              if (!ApiService.isAuthenticated) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sign in to share finances with family')),
+                );
+                return;
+              }
+              _showPartnerSheet(context);
+            },
+            tooltip: 'Family partners',
+          ),
         ],
       ),
       body: Column(
@@ -86,7 +93,7 @@ class FinanceDashboardScreen extends StatelessWidget {
             child: CustomScrollView(
               slivers: [
                 _CashFlowHeader(vm: vm),
-                if (vm.scopeFilter == 'family' && ApiService.isAuthenticated)
+                if (vm.scopeFilter == 'family')
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
