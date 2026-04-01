@@ -337,7 +337,11 @@ class ApiService {
     }
 
     if (res.body.isEmpty) return {};
-    return jsonDecode(res.body);
+    try {
+      return jsonDecode(res.body);
+    } on FormatException {
+      throw ApiException('Invalid server response', statusCode: res.statusCode);
+    }
   }
 
   static Future<dynamic> _requestNoAuth(
@@ -351,11 +355,20 @@ class ApiService {
     final res = await http.post(uri, headers: headers, body: jsonEncode(body));
 
     if (res.statusCode >= 400) {
-      final parsed = jsonDecode(res.body);
-      throw ApiException(parsed['detail'] ?? parsed['error'] ?? 'Request failed (${res.statusCode})', statusCode: res.statusCode);
+      try {
+        final parsed = jsonDecode(res.body);
+        throw ApiException(parsed['detail'] ?? parsed['error'] ?? 'Request failed (${res.statusCode})', statusCode: res.statusCode);
+      } catch (e) {
+        if (e is ApiException) rethrow;
+        throw ApiException('Server error (${res.statusCode})', statusCode: res.statusCode);
+      }
     }
 
-    return jsonDecode(res.body);
+    try {
+      return jsonDecode(res.body);
+    } on FormatException {
+      throw ApiException('Invalid server response');
+    }
   }
 
   static Future<void> _doRefresh() async {
