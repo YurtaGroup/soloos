@@ -130,6 +130,17 @@ class ApiService {
     await _clearSession();
   }
 
+  /// Permanently delete the user's account and all server-side data.
+  static Future<bool> deleteAccount() async {
+    try {
+      await directRequest('DELETE', '/api/auth/account');
+      await _clearSession();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Generic CRUD (same interface as SupabaseService) ────────────────────
 
   /// Fetch all rows for the current user from a table.

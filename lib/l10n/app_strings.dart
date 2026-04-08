@@ -319,6 +319,14 @@ const Map<String, Map<String, String>> appStrings = {
     'circles_block_confirm': 'Block this member? They won\'t be able to see your shared data.',
     'circles_blocked': 'Member blocked.',
     'circles_block_btn': 'Block',
+
+    // Account Deletion
+    'delete_account': 'Delete Account',
+    'delete_account_title': 'Delete Account Permanently?',
+    'delete_account_body': 'This will permanently delete your account and all data from our servers. This action cannot be undone.\n\nYour local data will also be erased.',
+    'delete_account_confirm': 'Delete My Account',
+    'delete_account_success': 'Account deleted. Goodbye.',
+    'delete_account_failed': 'Failed to delete account. Try again or contact support.',
   },
 
   'ru': {
@@ -609,6 +617,14 @@ const Map<String, Map<String, String>> appStrings = {
     'circles_block_confirm': 'Заблокировать участника? Он не сможет видеть ваши общие данные.',
     'circles_blocked': 'Участник заблокирован.',
     'circles_block_btn': 'Заблокировать',
+
+    // Account Deletion
+    'delete_account': 'Удалить аккаунт',
+    'delete_account_title': 'Удалить аккаунт навсегда?',
+    'delete_account_body': 'Это навсегда удалит ваш аккаунт и все данные с наших серверов. Это действие нельзя отменить.\n\nЛокальные данные тоже будут стёрты.',
+    'delete_account_confirm': 'Удалить мой аккаунт',
+    'delete_account_success': 'Аккаунт удалён. До свидания.',
+    'delete_account_failed': 'Не удалось удалить аккаунт. Попробуйте снова или свяжитесь с поддержкой.',
   },
 
   'ky': {
@@ -899,5 +915,13 @@ const Map<String, Map<String, String>> appStrings = {
     'circles_block_confirm': 'Бул мүчөнү бөгөттөйсүзбү? Ал бөлүшүлгөн маалыматыңызды көрө албайт.',
     'circles_blocked': 'Мүчө бөгөттөлдү.',
     'circles_block_btn': 'Бөгөттөө',
+
+    // Account Deletion
+    'delete_account': 'Аккаунтту жок кылуу',
+    'delete_account_title': 'Аккаунтту биротоло жок кыласызбы?',
+    'delete_account_body': 'Бул аккаунтуңузду жана серверлердеги бардык маалыматыңызды биротоло жок кылат. Бул аракетти кайтарып болбойт.\n\nЖергиликтүү маалыматтар да өчүрүлөт.',
+    'delete_account_confirm': 'Аккаунтумду жок кыл',
+    'delete_account_success': 'Аккаунт жок кылынды. Кош болуңуз.',
+    'delete_account_failed': 'Аккаунтту жок кылуу ишке ашкан жок. Кайра аракет кылыңыз.',
   },
 };

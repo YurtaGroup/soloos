@@ -632,6 +632,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: Text(loc.t('reset_all'),
                   style: const TextStyle(color: AppColors.accentRed)),
             ),
+            if (ApiService.isAuthenticated) ...[
+              const SizedBox(height: 8),
+              const Divider(color: AppColors.textMuted, height: 1),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.card,
+                      title: Text(loc.t('delete_account_title'),
+                          style: const TextStyle(color: AppColors.textPrimary)),
+                      content: Text(loc.t('delete_account_body'),
+                          style: const TextStyle(color: AppColors.textSecondary, height: 1.5)),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text(loc.t('cancel')),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
+                          child: Text(loc.t('delete_account_confirm')),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true && mounted) {
+                    _snack(loc.t('loading'));
+                    final ok = await ApiService.deleteAccount();
+                    if (!mounted) return;
+                    if (ok) {
+                      await _storage.prefs.clear();
+                      if (mounted) {
+                        _snack(loc.t('delete_account_success'));
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                          (_) => false,
+                        );
+                      }
+                    } else {
+                      _snack(loc.t('delete_account_failed'));
+                    }
+                  }
+                },
+                icon: const Icon(Icons.person_off_rounded, color: AppColors.accentRed),
+                label: Text(loc.t('delete_account'),
+                    style: const TextStyle(color: AppColors.accentRed)),
+              ),
+            ],
           ]),
           const SizedBox(height: 32),
         ],
