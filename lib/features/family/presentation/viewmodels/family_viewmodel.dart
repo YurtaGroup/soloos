@@ -197,7 +197,9 @@ class FamilyViewModel extends ChangeNotifier {
         final note = RelationshipNote.fromRow(r);
         _notesCache.putIfAbsent(note.personId, () => []).add(note);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to load relationship notes: $e');
+    }
   }
 
   Future<void> addNote(RelationshipNote note) async {

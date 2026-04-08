@@ -82,7 +82,9 @@ class GoogleCalendarService extends ChangeNotifier {
       final account = await _googleSignIn.signInSilently();
       _currentUser = account;
       if (account != null) await fetchEvents();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Google auto sign-in failed: $e');
+    }
   }
 
   // ─── Fetch Events ─────────────────────────────────────────────

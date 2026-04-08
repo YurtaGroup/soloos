@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'theme/app_theme.dart';
 import 'services/storage_service.dart';
 import 'services/locale_service.dart';
@@ -36,9 +37,11 @@ void main() async {
 
   // Load env (may not exist in production web builds)
   bool apiReady = false;
+  String sentryDsn = '';
   try {
     await dotenv.load(fileName: '.env');
     final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+    sentryDsn = dotenv.env['SENTRY_DSN'] ?? '';
     if (baseUrl.isNotEmpty) {
       ClaudeService.proxyBaseUrl = baseUrl;
       apiReady = true;
@@ -71,28 +74,40 @@ void main() async {
   final themeService = ThemeService();
   await themeService.init();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: localeService),
-        ChangeNotifierProvider.value(value: themeService),
-        ChangeNotifierProvider.value(value: GoogleCalendarService()),
-        ChangeNotifierProvider(create: (_) => IdeasViewModel()),
-        ChangeNotifierProvider(create: (_) => DashboardViewModel()),
-        ChangeNotifierProvider(create: (_) => FinanceViewModel()),
-        ChangeNotifierProvider(create: (_) => FamilyViewModel()),
-        ChangeNotifierProvider(create: (_) => GamificationViewModel()),
-        ChangeNotifierProvider(create: (_) => HabitsViewModel()),
-        ChangeNotifierProvider(create: (_) => ProjectsViewModel()),
-        ChangeNotifierProvider(create: (_) => StandupViewModel()),
-        ChangeNotifierProvider(create: (_) => ContactsViewModel()),
-      ],
-      child: SoloOSApp(
-        isOnboarded: storage.onboardingDone,
-        apiReady: apiReady,
-      ),
+  final app = MultiProvider(
+    providers: [
+      ChangeNotifierProvider.value(value: localeService),
+      ChangeNotifierProvider.value(value: themeService),
+      ChangeNotifierProvider.value(value: GoogleCalendarService()),
+      ChangeNotifierProvider(create: (_) => IdeasViewModel()),
+      ChangeNotifierProvider(create: (_) => DashboardViewModel()),
+      ChangeNotifierProvider(create: (_) => FinanceViewModel()),
+      ChangeNotifierProvider(create: (_) => FamilyViewModel()),
+      ChangeNotifierProvider(create: (_) => GamificationViewModel()),
+      ChangeNotifierProvider(create: (_) => HabitsViewModel()),
+      ChangeNotifierProvider(create: (_) => ProjectsViewModel()),
+      ChangeNotifierProvider(create: (_) => StandupViewModel()),
+      ChangeNotifierProvider(create: (_) => ContactsViewModel()),
+    ],
+    child: SoloOSApp(
+      isOnboarded: storage.onboardingDone,
+      apiReady: apiReady,
     ),
   );
+
+  if (sentryDsn.isNotEmpty) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = sentryDsn;
+        options.tracesSampleRate = 1.0;
+        options.environment =
+            const String.fromEnvironment('ENV', defaultValue: 'production');
+      },
+      appRunner: () => runApp(app),
+    );
+  } else {
+    runApp(app);
+  }
 }
 
 class SoloOSApp extends StatelessWidget {
