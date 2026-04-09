@@ -321,10 +321,15 @@ class _CirclesScreenState extends State<CirclesScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    Navigator.pop(ctx);
                     final code = await vm.generateInvite(circle.id);
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
                     if (code != null && context.mounted) {
                       Share.share('Join my "${circle.name}" circle on Solo OS!\n\nInvite code: $code');
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(vm.error ?? 'Failed to generate invite')),
+                      );
                     }
                   },
                   icon: const Icon(Icons.share_rounded, size: 18),
