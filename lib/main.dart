@@ -124,12 +124,35 @@ class SoloOSApp extends StatelessWidget {
     final localeService = context.watch<LocaleService>();
     final themeService = context.watch<ThemeService>();
 
+    // Sync system status bar icons with the active theme.
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: themeService.isDark
+          ? Brightness.light
+          : Brightness.dark,
+      statusBarBrightness: themeService.isDark
+          ? Brightness.dark
+          : Brightness.light,
+    ));
+
     return MaterialApp(
       title: 'Solo OS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeService.mode,
+      builder: (context, child) {
+        // Gentle global bump so every Text widget reads larger without
+        // touching individual screens. Respects the user's system scale:
+        // we multiply on top of it and cap to avoid broken layouts.
+        final mq = MediaQuery.of(context);
+        final systemScale = mq.textScaler.scale(1.0);
+        final boosted = (systemScale * 1.12).clamp(1.0, 1.6);
+        return MediaQuery(
+          data: mq.copyWith(textScaler: TextScaler.linear(boosted)),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       locale: localeService.flutterLocale,
       supportedLocales: const [
         Locale('en', 'US'),
