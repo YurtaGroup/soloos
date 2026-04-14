@@ -66,6 +66,32 @@ class IncomeStream {
 
   double get monthlyIncome => isOneTime ? 0.0 : frequency.monthlyAmount(amount);
 
+  IncomeStream copyWith({
+    String? title,
+    double? amount,
+    IncomeCategory? category,
+    ObligationFrequency? frequency,
+    DateTime? date,
+    bool? isActive,
+    String? notes,
+  }) {
+    return IncomeStream(
+      id: id,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      scope: scope,
+      amount: amount ?? this.amount,
+      currency: currency,
+      frequency: frequency ?? this.frequency,
+      isOneTime: isOneTime,
+      date: date ?? this.date,
+      isActive: isActive ?? this.isActive,
+      notes: notes ?? this.notes,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,

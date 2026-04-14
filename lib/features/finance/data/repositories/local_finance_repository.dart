@@ -132,6 +132,14 @@ class LocalFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<void> updateExpense(Expense updated) async {
+    final list = getExpenses()
+        .map((e) => e.id == updated.id ? updated : e)
+        .toList();
+    await _persist(_expensesKey, list.map((e) => e.toJson()).toList());
+  }
+
+  @override
   Future<void> deleteExpense(String id) async {
     final list = getExpenses()..removeWhere((e) => e.id == id);
     await _persist(_expensesKey, list.map((e) => e.toJson()).toList());

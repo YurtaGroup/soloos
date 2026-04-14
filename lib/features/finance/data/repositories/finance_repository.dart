@@ -25,5 +25,6 @@ abstract class FinanceRepository {
   // ── Expenses ───────────────────────────────────────────────────────────────
   List<Expense> getExpenses();
   Future<void> saveExpense(Expense expense);
+  Future<void> updateExpense(Expense expense);
   Future<void> deleteExpense(String id);
 }

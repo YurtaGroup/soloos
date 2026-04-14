@@ -760,9 +760,61 @@ class _TaskTile extends StatelessWidget {
         color: AppColors.accentRed.withValues(alpha: 0.2),
         child: const Icon(Icons.delete_outline, color: AppColors.accentRed),
       ),
+      confirmDismiss: (_) async {
+        return await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Delete task?'),
+                content: Text('Remove "${task.title}"?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppColors.accentRed),
+                    child: const Text('Delete'),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+      },
       onDismissed: (_) => onDelete(),
       child: GestureDetector(
         onTap: onEdit,
+        onLongPress: () async {
+          final choice = await showModalBottomSheet<String>(
+            context: context,
+            showDragHandle: true,
+            builder: (ctx) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.edit_outlined),
+                    title: const Text('Edit'),
+                    onTap: () => Navigator.pop(ctx, 'edit'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.delete_outline,
+                        color: AppColors.accentRed),
+                    title: const Text('Delete',
+                        style: TextStyle(color: AppColors.accentRed)),
+                    onTap: () => Navigator.pop(ctx, 'delete'),
+                  ),
+                ],
+              ),
+            ),
+          );
+          if (choice == 'edit') {
+            onEdit();
+          } else if (choice == 'delete') {
+            onDelete();
+          }
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(

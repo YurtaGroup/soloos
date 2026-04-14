@@ -648,50 +648,81 @@ class _IncomeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+    final vm = context.read<FinanceViewModel>();
+    return Dismissible(
+      key: Key('income-${income.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.accentRed.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.delete_outline_rounded,
+            color: AppColors.accentRed),
       ),
-      child: Row(
-        children: [
-          Text(income.category.emoji, style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(income.title,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary, fontSize: 14)),
-                Text(
-                  isOneTime
-                      ? (income.date != null
-                          ? '${income.date!.month}/${income.date!.day}'
-                          : 'One-time')
-                      : income.frequency.label,
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 11),
-                ),
-              ],
+      confirmDismiss: (_) => _confirmDelete(context, income.title),
+      onDismissed: (_) => vm.deleteIncomeStream(income.id),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showEditIncomeDialog(context, vm, income),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color ?? AppColors.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+              width: 1,
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Row(
             children: [
-              Text('+\$${_fmt(income.amount)}',
-                  style: const TextStyle(
-                      color: AppColors.accentGreen,
-                      fontWeight: FontWeight.w600)),
-              if (!isOneTime && income.frequency != ObligationFrequency.monthly)
-                Text('\$${_fmt(income.monthlyIncome)}/mo',
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 11)),
+              Text(income.category.emoji, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(income.title,
+                        style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      isOneTime
+                          ? (income.date != null
+                              ? '${income.date!.month}/${income.date!.day}'
+                              : 'One-time')
+                          : income.frequency.label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.color
+                              ?.withValues(alpha: 0.65)),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('+\$${_fmt(income.amount)}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(color: AppColors.accentGreen)),
+                  if (!isOneTime &&
+                      income.frequency != ObligationFrequency.monthly)
+                    Text('\$${_fmt(income.monthlyIncome)}/mo',
+                        style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -723,36 +754,68 @@ class _ExpenseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+    final vm = context.read<FinanceViewModel>();
+    return Dismissible(
+      key: Key('expense-${expense.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.accentRed.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.delete_outline_rounded,
+            color: AppColors.accentRed),
       ),
-      child: Row(
-        children: [
-          Text(expense.category.emoji, style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(expense.title,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary, fontSize: 14)),
-                Text(
-                  '${expense.date.month}/${expense.date.day}',
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 11),
-                ),
-              ],
+      confirmDismiss: (_) => _confirmDelete(context, expense.title),
+      onDismissed: (_) => vm.deleteExpense(expense.id),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showEditExpenseDialog(context, vm, expense),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color ?? AppColors.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+              width: 1,
             ),
           ),
-          Text('-\$${_fmt(expense.amount)}',
-              style: const TextStyle(
-                  color: AppColors.accentRed, fontWeight: FontWeight.w600)),
-        ],
+          child: Row(
+            children: [
+              Text(expense.category.emoji, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(expense.title,
+                        style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${expense.date.month}/${expense.date.day}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.color
+                              ?.withValues(alpha: 0.65)),
+                    ),
+                  ],
+                ),
+              ),
+              Text('-\$${_fmt(expense.amount)}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(color: AppColors.accentRed)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1288,3 +1351,208 @@ String _fmt(double v) {
   if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
   return v.toStringAsFixed(0);
 }
+
+// ── Edit / Delete dialogs ────────────────────────────────────────────────────
+
+Future<bool?> _confirmDelete(BuildContext context, String title) {
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete?'),
+      content: Text('Remove "$title"? This can\'t be undone.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _showEditExpenseDialog(
+  BuildContext context,
+  FinanceViewModel vm,
+  Expense expense,
+) async {
+  final titleCtl = TextEditingController(text: expense.title);
+  final amountCtl =
+      TextEditingController(text: expense.amount.toStringAsFixed(2));
+  ExpenseCategory category = expense.category;
+
+  final result = await showDialog<_EditResult>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: const Text('Edit expense'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleCtl,
+                decoration: const InputDecoration(labelText: 'Title'),
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountCtl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                    labelText: 'Amount', prefixText: '\$ '),
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Category',
+                    style: Theme.of(ctx).textTheme.labelMedium),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: ExpenseCategory.values.map((c) {
+                  final selected = c == category;
+                  return ChoiceChip(
+                    label: Text('${c.emoji} ${c.label}'),
+                    selected: selected,
+                    onSelected: (_) => setState(() => category = c),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _EditResult.delete),
+            style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
+            child: const Text('Delete'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _EditResult.cancel),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, _EditResult.save),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (result == _EditResult.save) {
+    final newTitle = titleCtl.text.trim();
+    final newAmount = double.tryParse(amountCtl.text.trim()) ?? expense.amount;
+    if (newTitle.isEmpty) return;
+    await vm.updateExpense(expense.copyWith(
+      title: newTitle,
+      amount: newAmount,
+      category: category,
+    ));
+  } else if (result == _EditResult.delete) {
+    if (!context.mounted) return;
+    final confirm = await _confirmDelete(context, expense.title);
+    if (confirm == true) await vm.deleteExpense(expense.id);
+  }
+}
+
+Future<void> _showEditIncomeDialog(
+  BuildContext context,
+  FinanceViewModel vm,
+  IncomeStream income,
+) async {
+  final titleCtl = TextEditingController(text: income.title);
+  final amountCtl =
+      TextEditingController(text: income.amount.toStringAsFixed(2));
+  ObligationFrequency frequency = income.frequency;
+
+  final result = await showDialog<_EditResult>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: const Text('Edit income'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleCtl,
+                decoration: const InputDecoration(labelText: 'Title'),
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountCtl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                    labelText: 'Amount', prefixText: '\$ '),
+              ),
+              if (!income.isOneTime) ...[
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Frequency',
+                      style: Theme.of(ctx).textTheme.labelMedium),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ObligationFrequency.values.map((f) {
+                    final selected = f == frequency;
+                    return ChoiceChip(
+                      label: Text(f.label),
+                      selected: selected,
+                      onSelected: (_) => setState(() => frequency = f),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _EditResult.delete),
+            style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
+            child: const Text('Delete'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _EditResult.cancel),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, _EditResult.save),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (result == _EditResult.save) {
+    final newTitle = titleCtl.text.trim();
+    final newAmount = double.tryParse(amountCtl.text.trim()) ?? income.amount;
+    if (newTitle.isEmpty) return;
+    await vm.updateIncomeStream(income.copyWith(
+      title: newTitle,
+      amount: newAmount,
+      frequency: frequency,
+    ));
+  } else if (result == _EditResult.delete) {
+    if (!context.mounted) return;
+    final confirm = await _confirmDelete(context, income.title);
+    if (confirm == true) await vm.deleteIncomeStream(income.id);
+  }
+}
+
+enum _EditResult { save, delete, cancel }

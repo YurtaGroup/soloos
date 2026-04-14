@@ -297,12 +297,18 @@ class FinanceViewModel extends ChangeNotifier {
   Future<void> updateIncomeStream(IncomeStream income) async {
     income.updatedAt = DateTime.now();
     if (_useDb) {
-      await ApiService.update('income_streams', income.id, {
-        'title': income.title,
-        'amount': income.amount,
-        'is_active': income.isActive,
-        'updated_at': income.updatedAt.toIso8601String(),
-      });
+      try {
+        await ApiService.update('income_streams', income.id, {
+          'title': income.title,
+          'amount': income.amount,
+          'category': income.category.name,
+          'frequency': income.frequency.name,
+          'is_active': income.isActive,
+          'updated_at': income.updatedAt.toIso8601String(),
+        });
+      } catch (e) {
+        debugPrint('API update income_stream failed: $e');
+      }
     }
     await _repo.updateIncomeStream(income);
     _incomeStreams = _repo.getIncomeStreams();
@@ -327,6 +333,25 @@ class FinanceViewModel extends ChangeNotifier {
     await _repo.saveExpense(expense);
     _expenses = _repo.getExpenses();
     AnalyticsService().expenseLogged(expense.amount, expense.currency);
+    notifyListeners();
+  }
+
+  Future<void> updateExpense(Expense expense) async {
+    if (_useDb) {
+      try {
+        await ApiService.update('expenses', expense.id, {
+          'title': expense.title,
+          'amount': expense.amount,
+          'category': expense.category.name,
+          'date': expense.date.toIso8601String(),
+          'notes': expense.notes,
+        });
+      } catch (e) {
+        debugPrint('API update expense failed: $e');
+      }
+    }
+    await _repo.updateExpense(expense);
+    _expenses = _repo.getExpenses();
     notifyListeners();
   }
 

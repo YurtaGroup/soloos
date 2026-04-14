@@ -55,6 +55,26 @@ class Expense {
         date = date ?? DateTime.now(),
         createdAt = createdAt ?? DateTime.now();
 
+  Expense copyWith({
+    String? title,
+    double? amount,
+    ExpenseCategory? category,
+    DateTime? date,
+    String? notes,
+  }) {
+    return Expense(
+      id: id,
+      title: title ?? this.title,
+      amount: amount ?? this.amount,
+      currency: currency,
+      category: category ?? this.category,
+      scope: scope,
+      date: date ?? this.date,
+      notes: notes ?? this.notes,
+      createdAt: createdAt,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
