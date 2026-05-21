@@ -16,7 +16,10 @@ import '../../../auth/presentation/screens/auth_screen.dart';
 import '../../../home/presentation/screens/onboarding_screen.dart';
 import '../../../home/presentation/screens/dashboard_screen.dart';
 import '../../../admin/presentation/screens/admin_dashboard_screen.dart';
-import 'calendar_screen.dart';
+// Legacy CalendarScreen import removed — routing now points to CalendarSettingsScreen.
+// The legacy file at settings/presentation/screens/calendar_screen.dart is untouched
+// and will be deleted in the cleanup commit.
+import '../../../calendar/presentation/screens/calendar_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -433,7 +436,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ElevatedButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const CalendarSettingsScreen()),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentBlue,

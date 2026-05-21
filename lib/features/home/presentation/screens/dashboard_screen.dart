@@ -46,7 +46,8 @@ import '../../../work/presentation/screens/tasks_screen.dart';
 import '../../../family/presentation/screens/crm_screen.dart';
 import '../../../family/presentation/screens/crm_detail_screen.dart';
 import '../../../family/domain/models/crm_extras.dart';
-import '../../../settings/presentation/screens/calendar_screen.dart';
+// Tab 3 now routes to CalendarWeekScreen (Week 4 Phase B).
+import '../../../calendar/presentation/screens/calendar_week_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../finance/presentation/screens/finance_dashboard_screen.dart';
 
@@ -77,8 +78,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // from the More section but is no longer in the primary nav.
   static const _tabScreens = <Widget>[
     TasksScreen(),
-    CrmScreen(),       // Week 4 Phase A — Attio-style pipeline table
-    CalendarScreen(),
+    CrmScreen(),           // Week 4 Phase A — Attio-style pipeline table
+    CalendarWeekScreen(),  // Week 4 Phase B — Cron-style 7-column week view
     FinanceDashboardScreen(),
   ];
 

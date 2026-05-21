@@ -58,6 +58,24 @@ class ProjectsViewModel extends ChangeNotifier {
 
   void reload() => _loadProjects();
 
+  /// Returns all tasks with a dueDate in [start, end) from every project.
+  /// Additive helper for CalendarWeekScreen. Does not modify any state.
+  List<({Task task, Project project})> tasksInRange(
+    DateTime start,
+    DateTime end,
+  ) {
+    final result = <({Task task, Project project})>[];
+    for (final project in _projects) {
+      for (final task in project.tasks) {
+        final due = task.dueDate;
+        if (due != null && !due.isBefore(start) && due.isBefore(end)) {
+          result.add((task: task, project: project));
+        }
+      }
+    }
+    return result;
+  }
+
   Future<bool> addProject({required String name, String description = ''}) async {
     if (name.trim().isEmpty) return false;
     final p = Project(

@@ -51,6 +51,19 @@ class GoogleCalendarService extends ChangeNotifier {
       ..sort((a, b) => a.start.compareTo(b.start));
   }
 
+  /// Returns events whose start falls within the 7-day window beginning at
+  /// [monday] (inclusive) through the following Sunday (inclusive at 23:59).
+  /// Added for the CalendarWeekScreen week-view. Minimal delta.
+  List<CalendarEvent> eventsForWeek(DateTime monday) {
+    final start = DateTime(monday.year, monday.month, monday.day);
+    final end   = start.add(const Duration(days: 7));
+    return _events
+        .where((e) =>
+            !e.start.isBefore(start) && e.start.isBefore(end))
+        .toList()
+      ..sort((a, b) => a.start.compareTo(b.start));
+  }
+
   // ─── Sign In ──────────────────────────────────────────────────
   Future<bool> signIn() async {
     try {
