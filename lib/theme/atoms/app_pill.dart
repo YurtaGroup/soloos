@@ -44,8 +44,12 @@ class AppPill extends StatelessWidget {
           ColorTokens.success,
         ),
       AppPillVariant.danger => (
-          ColorTokens.danger.withValues(alpha: 0.12),
-          ColorTokens.danger,
+          // Light: deeper red bg tint to match the stronger dangerFg.
+          // Dark: standard danger token (unchanged).
+          isDark
+              ? ColorTokens.danger.withValues(alpha: 0.12)
+              : const Color(0xFFDC2626).withValues(alpha: 0.08),
+          c.dangerFg,
         ),
       AppPillVariant.warn => (
           ColorTokens.warn.withValues(alpha: 0.12),

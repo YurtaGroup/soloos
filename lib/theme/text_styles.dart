@@ -105,6 +105,17 @@ abstract final class TextStyles {
         color: _fg(context),
       );
 
+  /// mono.lg — 14pt / 20 lh / regular / tabular figures
+  /// Use for row-trailing values (times, amounts) that read small at 13pt.
+  static TextStyle monoLg(BuildContext context) =>
+      GoogleFonts.jetBrainsMono(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        height: 20 / 14,
+        fontFeatures: const [FontFeature.tabularFigures()],
+        color: _fg(context),
+      );
+
   // ---------------------------------------------------------------------------
   // STATIC VARIANTS (for use inside ThemeData where BuildContext is unavailable)
   // These carry no color — callers set color explicitly.
@@ -153,6 +164,13 @@ abstract final class TextStyles {
     fontSize: 13,
     fontWeight: FontWeight.w400,
     height: 18 / 13,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+
+  static TextStyle get monoLgStatic => GoogleFonts.jetBrainsMono(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 20 / 14,
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 

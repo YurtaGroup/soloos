@@ -1,22 +1,63 @@
+// lib/features/home/presentation/screens/dashboard_screen.dart
+//
+// Quiet OS — Week 2 Dashboard Rebuild.
+//
+// Navigation choice: Option B — 5 tabs.
+//   0: Home (Dashboard)
+//   1: Tasks  → WorkHubScreen
+//   2: CRM    → ContactsScreen
+//   3: Calendar → CalendarScreen
+//   4: Money  → FinanceDashboardScreen
+//
+// Rationale for B: Dashboard is the primary surface. Burying it behind a
+// separate route (Option A) creates a discoverability cliff on first launch.
+// With 5 items the nav is still scannable on a 393pt iPhone; each item
+// has a clear, distinct label. Tap-to-home from any tab costs one tap.
+//
+// Demoted modules (Health, Ideas, Family, Circles, Gamification, Admin)
+// live in a "MORE" section at the bottom of the Dashboard tab. Their
+// screens are fully intact — just no longer in the top-level nav.
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../../../theme/app_theme.dart';
+
+import '../../../../theme/app_colors.dart';
+import '../../../../theme/tokens.dart';
+import '../../../../theme/text_styles.dart';
+import '../../../../theme/atoms/section_label.dart';
+import '../../../../theme/atoms/app_row.dart';
+import '../../../../theme/atoms/app_card.dart';
+import '../../../../theme/atoms/app_button.dart';
+import '../../../../theme/atoms/mono_text.dart';
+
 import '../../../../services/storage_service.dart';
-import '../../../../services/locale_service.dart';
-import '../../../../widgets/common_widgets.dart';
-import '../../../../core/utils/stats_calculator.dart';
-import '../../../dashboard/presentation/viewmodels/dashboard_view_model.dart';
-import '../../../finance/presentation/screens/finance_dashboard_screen.dart';
-import '../../../gamification/presentation/viewmodels/gamification_viewmodel.dart';
-import '../../../gamification/presentation/screens/gamification_dashboard_screen.dart';
-import '../../../gamification/domain/models/user_progress.dart';
-import '../../../work/presentation/screens/standup_screen.dart';
-import '../../../family/presentation/screens/contacts_screen.dart';
-import '../../../settings/presentation/screens/settings_screen.dart';
-import '../../../settings/presentation/screens/calendar_screen.dart';
+
+import '../../../work/presentation/viewmodels/projects_view_model.dart';
+import '../../../work/domain/models/task.dart';
+import '../../../family/presentation/viewmodels/contacts_view_model.dart';
+import '../../../family/domain/models/contact.dart';
+import '../../../finance/presentation/viewmodels/finance_view_model.dart';
+
+// Nav-destination screens (internals untouched)
 import 'work_hub_screen.dart';
+import '../../../family/presentation/screens/contacts_screen.dart';
+import '../../../settings/presentation/screens/calendar_screen.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../finance/presentation/screens/finance_dashboard_screen.dart';
+
+// Demoted module screens (reachable from MORE section)
+import '../../../health/presentation/screens/habits_screen.dart';
+import '../../../ideas/presentation/screens/ideas_screen.dart';
+import '../../../family/presentation/screens/family_dashboard_screen.dart';
+import '../../../circles/presentation/screens/circles_screen.dart';
+import '../../../gamification/presentation/screens/gamification_dashboard_screen.dart';
+import '../../../admin/presentation/screens/admin_dashboard_screen.dart';
+
+// ---------------------------------------------------------------------------
+// ROOT — DashboardScreen
+// ---------------------------------------------------------------------------
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -26,426 +67,130 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final _storage = StorageService();
   int _currentIndex = 0;
 
-  static const List<Widget> _staticScreens = [
-    WorkHubScreen(),     // index 1: Projects + Ideas
-    LifeHubScreen(),     // index 2: Habits + Family
-    FinanceDashboardScreen(), // index 3: Finance
-    CalendarScreen(),    // index 4: Calendar
+  // Static screens for tabs 1-4. Dashboard (tab 0) is built inline.
+  static const _tabScreens = <Widget>[
+    WorkHubScreen(),
+    ContactsScreen(),
+    CalendarScreen(),
+    FinanceDashboardScreen(),
   ];
 
-  void _navigate(int index) => setState(() => _currentIndex = index);
-
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<DashboardViewModel>();
-    final homeTab = _HomeTab(
-      storage: _storage,
-      digest: vm.digest,
-      digestLoading: vm.digestLoading,
-      onRefreshDigest: vm.refresh,
-      onNavigate: _navigate,
-    );
-
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _currentIndex,
-        children: [homeTab, ..._staticScreens],
+        children: [
+          _HomeDashboard(onNavigate: (i) => setState(() => _currentIndex = i)),
+          ..._tabScreens,
+        ],
       ),
-      bottomNavigationBar: _BottomNav(
+      bottomNavigationBar: _QuietNav(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) {
+          HapticFeedback.selectionClick();
+          setState(() => _currentIndex = i);
+        },
       ),
     );
   }
 }
 
-class _HomeTab extends StatefulWidget {
-  final StorageService storage;
-  final String digest;
-  final bool digestLoading;
-  final VoidCallback onRefreshDigest;
-  final Function(int) onNavigate;
+// ---------------------------------------------------------------------------
+// BOTTOM NAV — Material 3 NavigationBar, 5 items
+// ---------------------------------------------------------------------------
 
-  const _HomeTab({
-    required this.storage,
-    required this.digest,
-    required this.digestLoading,
-    required this.onRefreshDigest,
-    required this.onNavigate,
-  });
+class _QuietNav extends StatelessWidget {
+  const _QuietNav({required this.currentIndex, required this.onTap});
 
-  @override
-  State<_HomeTab> createState() => _HomeTabState();
-}
-
-class _HomeTabState extends State<_HomeTab> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GamificationViewModel>().init();
-    });
-  }
+  final int currentIndex;
+  final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final hour = now.hour;
-    String greeting;
-    if (hour < 12) {
-      greeting = ls.t('good_morning');
-    } else if (hour < 17) {
-      greeting = ls.t('good_afternoon');
-    } else {
-      greeting = ls.t('good_evening');
-    }
+    final c = QColors.of(context);
 
-    final gamVm = context.watch<GamificationViewModel>();
-    final storage = widget.storage;
-    final stats = StatsCalculator.calculate(
-      projects: storage.getProjects(),
-      habits: storage.getHabits(),
-      transactions: storage.getTransactions(),
-      ideas: storage.getIdeas(),
-      contacts: storage.getContacts(),
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: c.border, width: 1),
+        ),
+      ),
+      child: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: onTap,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.check_circle_outline),
+            selectedIcon: Icon(Icons.check_circle_rounded),
+            label: 'Tasks',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.handshake_outlined),
+            selectedIcon: Icon(Icons.handshake_rounded),
+            label: 'CRM',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_today_outlined),
+            selectedIcon: Icon(Icons.calendar_today_rounded),
+            label: 'Calendar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Money',
+          ),
+        ],
+      ),
     );
-    final openTasks = stats.openTasks;
-    final habitStreak = stats.habitStreak;
-    final habitsToday = stats.habitsToday;
-    final habits = storage.getHabits();
-    final balance = stats.balance;
-    final upcomingBdays = stats.upcomingBirthdays;
-    final ideas = stats.activeIdeas;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HOME DASHBOARD — single scrollable column
+// ---------------------------------------------------------------------------
+
+class _HomeDashboard extends StatelessWidget {
+  const _HomeDashboard({required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final storage = StorageService();
 
     return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
       slivers: [
-        // App Bar
-        SliverAppBar(
-          floating: true,
-          backgroundColor: AppColors.background,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$greeting, ${storage.userName.isEmpty ? 'Chief' : storage.userName} 👋',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                DateFormat('EEEE, MMMM d').format(now),
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-            ),
-          ],
-        ),
-
+        _DashboardAppBar(storage: storage),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          padding: const EdgeInsets.fromLTRB(
+            SpaceTokens.s16, SpaceTokens.s24,
+            SpaceTokens.s16, SpaceTokens.s48,
+          ),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
+              // ── TODAY ──────────────────────────────────────────
+              _TodaySection(),
+              const SizedBox(height: SpaceTokens.s32),
 
-              // ── AI Daily Digest ──────────────────────────────────
-              _DigestCard(
-                digest: widget.digest,
-                loading: widget.digestLoading,
-                onRefresh: widget.onRefreshDigest,
-                hasApiKey: storage.apiKey.isNotEmpty,
-              ),
-              const SizedBox(height: 16),
+              // ── PIPELINE ────────────────────────────────────────
+              _PipelineSection(onNavigate: onNavigate),
+              const SizedBox(height: SpaceTokens.s32),
 
-              // ── Quick Stats ──────────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickStatCard(
-                      label: ls.t('open_tasks'),
-                      value: openTasks.toString(),
-                      icon: Icons.check_box_outlined,
-                      color: AppColors.workColor,
-                      onTap: () => widget.onNavigate(1),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _QuickStatCard(
-                      label: ls.t('habit_streak'),
-                      value: '${habitStreak}d',
-                      icon: Icons.local_fire_department_rounded,
-                      color: AppColors.healthColor,
-                      onTap: () => widget.onNavigate(2),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _QuickStatCard(
-                      label: ls.t('balance'),
-                      value: '\$${balance.toStringAsFixed(0)}',
-                      icon: Icons.account_balance_wallet_outlined,
-                      color: AppColors.financeColor,
-                      onTap: () => widget.onNavigate(3),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              // ── PULSE ───────────────────────────────────────────
+              _PulseSection(),
+              const SizedBox(height: SpaceTokens.s32),
 
-              // ── Progress & Gamification ────────────────────────
-              _ProgressCard(gamVm: gamVm),
-              const SizedBox(height: 16),
-
-              // ── Today's Habits ───────────────────────────────────
-              if (habits.isNotEmpty) ...[
-                SectionCard(
-                  child: Column(
-                    children: [
-                      ModuleHeader(
-                        title: ls.t('todays_habits'),
-                        color: AppColors.healthColor,
-                        icon: Icons.spa_outlined,
-                        onAction: () => widget.onNavigate(2),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Text(
-                            '$habitsToday/${habits.length}',
-                            style: TextStyle(
-                              color: habitsToday == habits.length
-                                  ? AppColors.healthColor
-                                  : AppColors.textPrimary,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            ls.t('completed'),
-                            style: const TextStyle(color: AppColors.textSecondary),
-                          ),
-                          const Spacer(),
-                          if (habitsToday == habits.length)
-                            Text(ls.t('perfect_day'), style: const TextStyle(fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: habits.isEmpty ? 0 : habitsToday / habits.length,
-                          backgroundColor: AppColors.healthColor.withOpacity(0.15),
-                          valueColor: const AlwaysStoppedAnimation(AppColors.healthColor),
-                          minHeight: 6,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // ── Active Ideas ─────────────────────────────────────
-              SectionCard(
-                onTap: () => widget.onNavigate(1),
-                child: Column(
-                  children: [
-                    ModuleHeader(
-                      title: ls.t('active_ideas'),
-                      color: AppColors.ideasColor,
-                      icon: Icons.lightbulb_outline_rounded,
-                      onAction: () => widget.onNavigate(1),
-                      actionLabel: '+ Add',
-                    ),
-                    const SizedBox(height: 12),
-                    if (ideas.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          ls.t('no_active_ideas'),
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                        ),
-                      )
-                    else
-                      ...ideas.map((idea) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.ideasColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    idea.title,
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                                const Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 12,
-                                  color: AppColors.textMuted,
-                                ),
-                              ],
-                            ),
-                          )),
-                    Row(
-                      children: List.generate(3, (i) {
-                        final filled = i < ideas.length;
-                        return Expanded(
-                          child: Container(
-                            margin: EdgeInsets.only(right: i < 2 ? 6 : 0, top: 8),
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: filled
-                                  ? AppColors.ideasColor
-                                  : AppColors.ideasColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      ls.t('idea_slots_used', {'n': ideas.length.toString()}),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Daily Standup ────────────────────────────────────
-              GradientCard(
-                colors: const [Color(0xFF7C3AED), Color(0xFFDB2777)],
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StandupScreen()),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            ls.t('daily_ai_standup'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            ls.t('standup_subtitle'),
-                            style: const TextStyle(color: Colors.white70, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.mic_rounded, color: Colors.white, size: 24),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Upcoming Birthdays ───────────────────────────────
-              if (upcomingBdays.isNotEmpty) ...[
-                SectionCard(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ContactsScreen()),
-                  ),
-                  child: Column(
-                    children: [
-                      ModuleHeader(
-                        title: ls.t('upcoming_birthdays'),
-                        color: AppColors.accentRed,
-                        icon: Icons.cake_outlined,
-                        onAction: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ContactsScreen()),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ...upcomingBdays.take(3).map((c) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
-                              children: [
-                                Text(c.emoji, style: const TextStyle(fontSize: 20)),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    c.name,
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: c.daysUntilBirthday == 0
-                                        ? AppColors.accentRed.withOpacity(0.2)
-                                        : AppColors.surface,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    c.daysUntilBirthday == 0
-                                        ? ls.t('today_birthday')
-                                        : 'in ${c.daysUntilBirthday}d',
-                                    style: TextStyle(
-                                      color: c.daysUntilBirthday == 0
-                                          ? AppColors.accentRed
-                                          : AppColors.textSecondary,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )),
-                    ],
-                  ),
-                ),
-              ],
+              // ── MORE ────────────────────────────────────────────
+              _MoreSection(),
             ]),
           ),
         ),
@@ -454,375 +199,79 @@ class _HomeTabState extends State<_HomeTab> {
   }
 }
 
-class _ProgressCard extends StatelessWidget {
-  final GamificationViewModel gamVm;
-  const _ProgressCard({required this.gamVm});
+// ---------------------------------------------------------------------------
+// APP BAR
+// ---------------------------------------------------------------------------
+
+class _DashboardAppBar extends StatelessWidget {
+  const _DashboardAppBar({required this.storage});
+
+  final StorageService storage;
+
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String get _dateString =>
+      DateFormat('EEEE, MMMM d').format(DateTime.now());
+
+  String get _firstName {
+    final name = storage.userName.trim();
+    if (name.isEmpty) return 'Timur';
+    return name.split(' ').first;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final progress = gamVm.progress;
-    final score = gamVm.todayScoreValue;
-    final activeStreaks = gamVm.activeStreaks;
-    final missions = gamVm.todayMissions;
-    final completed = gamVm.missionsCompletedCount;
-    final total = gamVm.totalMissionsCount;
+    final c = QColors.of(context);
 
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const GamificationDashboardScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1030), Color(0xFF0D1117)],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.accent.withOpacity(0.3)),
+    final topInset = MediaQuery.of(context).padding.top;
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          SpaceTokens.s16,
+          topInset + SpaceTokens.s8,
+          SpaceTokens.s8,
+          SpaceTokens.s16,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Header row: level + score
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.bolt_rounded,
-                      color: AppColors.accent, size: 18),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Level ${progress.level} · ${progress.levelTitle}',
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '${progress.xpInCurrentLevel} / ${UserProgress.xpPerLevel} XP',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 11),
-                      ),
-                    ],
+                  child: Text(
+                    _dateString,
+                    style: TextStyles.bodyLg(context).copyWith(
+                      color: c.textSecondary,
+                    ),
                   ),
                 ),
-                // Today's score circle
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        _scoreColor(score).withOpacity(0.25),
-                        _scoreColor(score).withOpacity(0.05),
-                      ],
-                    ),
-                    border: Border.all(
-                        color: _scoreColor(score).withOpacity(0.5), width: 2),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$score',
-                      style: TextStyle(
-                        color: _scoreColor(score),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                _NavIconButton(
+                  icon: Icons.terminal_outlined,
+                  tooltip: 'Command palette',
+                  onTap: () {/* placeholder — Week 3 */},
+                ),
+                _NavIconButton(
+                  icon: Icons.settings_outlined,
+                  tooltip: 'Settings',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-
-            // XP progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress.levelProgress,
-                backgroundColor: AppColors.accent.withOpacity(0.12),
-                valueColor: const AlwaysStoppedAnimation(AppColors.accent),
-                minHeight: 5,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Streaks + Missions row
-            Row(
-              children: [
-                // Active streaks
-                if (activeStreaks.isNotEmpty) ...[
-                  ...activeStreaks.take(3).map((s) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(s.flameEmoji,
-                                  style: const TextStyle(fontSize: 12)),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${s.currentStreak}d',
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )),
-                ],
-                const Spacer(),
-                // Missions counter
-                if (total > 0)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: completed == total
-                          ? AppColors.accentGreen.withOpacity(0.15)
-                          : AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          completed == total
-                              ? Icons.check_circle_rounded
-                              : Icons.flag_rounded,
-                          size: 14,
-                          color: completed == total
-                              ? AppColors.accentGreen
-                              : AppColors.accent,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$completed/$total missions',
-                          style: TextStyle(
-                            color: completed == total
-                                ? AppColors.accentGreen
-                                : AppColors.textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-
-            // Pending missions preview
-            if (missions.where((m) => !m.isCompleted).isNotEmpty) ...[
-              const SizedBox(height: 10),
-              ...missions
-                  .where((m) => !m.isCompleted)
-                  .take(2)
-                  .map((m) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          children: [
-                            Text(m.difficultyEmoji,
-                                style: const TextStyle(fontSize: 10)),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                m.title,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text(
-                              '+${m.xpReward} XP',
-                              style: const TextStyle(
-                                color: AppColors.accent,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _scoreColor(int score) {
-    if (score >= 80) return AppColors.accentGreen;
-    if (score >= 50) return AppColors.accent;
-    if (score >= 25) return const Color(0xFFF59E0B);
-    return AppColors.accentRed;
-  }
-}
-
-class _DigestCard extends StatelessWidget {
-  final String digest;
-  final bool loading;
-  final VoidCallback onRefresh;
-  final bool hasApiKey;
-
-  const _DigestCard({
-    required this.digest,
-    required this.loading,
-    required this.onRefresh,
-    required this.hasApiKey,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E1B4B), Color(0xFF1C1917)],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.auto_awesome, color: AppColors.primaryLight, size: 16),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  ls.t('ai_daily_digest'),
-                  style: const TextStyle(
-                    color: AppColors.primaryLight,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                if (!loading)
-                  GestureDetector(
-                    onTap: hasApiKey ? onRefresh : null,
-                    child: Icon(
-                      Icons.refresh_rounded,
-                      color: hasApiKey ? AppColors.primaryLight : AppColors.textMuted,
-                      size: 18,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: loading
-                ? AiThinkingWidget(message: ls.t('analyzing_day'))
-                : !hasApiKey
-                    ? Text(
-                        ls.t('add_api_key'),
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                      )
-                    : digest.isEmpty
-                        ? GestureDetector(
-                            onTap: onRefresh,
-                            child: Text(
-                              ls.t('tap_to_generate'),
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                            ),
-                          )
-                        : Text(
-                            digest,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 13,
-                              height: 1.6,
-                            ),
-                          ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickStatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickStatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
             ),
             const SizedBox(height: 2),
             Text(
-              label,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
-              maxLines: 1,
+              '$_greeting, $_firstName.',
+              style: TextStyles.displayLg(context),
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ],
@@ -832,72 +281,649 @@ class _QuickStatCard extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
-  final int currentIndex;
-  final Function(int) onTap;
+class _NavIconButton extends StatelessWidget {
+  const _NavIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
 
-  const _BottomNav({required this.currentIndex, required this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      (Icons.home_rounded, Icons.home_outlined, ls.t('nav_home')),
-      (Icons.work_rounded, Icons.work_outline_rounded, ls.t('nav_work')),
-      (Icons.favorite_rounded, Icons.favorite_border_rounded, 'Life'),
-      (Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, ls.t('nav_finance')),
-      (Icons.calendar_month_rounded, Icons.calendar_month_outlined, 'Calendar'),
-    ];
+    final c = QColors.of(context);
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      color: c.textSecondary,
+      tooltip: tooltip,
+      onPressed: onTap,
+    );
+  }
+}
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.textMuted.withOpacity(0.15)),
+// ---------------------------------------------------------------------------
+// TODAY SECTION
+// ---------------------------------------------------------------------------
+
+class _TodaySection extends StatelessWidget {
+  const _TodaySection();
+
+  /// Gather today's tasks: all incomplete + completed tasks due today.
+  List<Task> _todayTasks(List<Task> allTasks) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Tasks either due today or with no due date that are not done
+    // (show all non-done + done ones from today).
+    final result = allTasks.where((t) {
+      if (t.dueDate != null) {
+        final due = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
+        return due == today;
+      }
+      // Tasks with no due date: show if not done or created today
+      if (!t.isDone) return true;
+      final created = DateTime(t.createdAt.year, t.createdAt.month, t.createdAt.day);
+      return created == today;
+    }).toList();
+
+    // Sort: in_progress first, then todo, then done
+    result.sort((a, b) {
+      int rank(Task t) {
+        if (t.status == 'in_progress') return 0;
+        if (!t.isDone) return 1;
+        return 2;
+      }
+      return rank(a).compareTo(rank(b));
+    });
+
+    return result;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = QColors.of(context);
+    final vm = context.watch<ProjectsViewModel>();
+
+    // Flatten all tasks across all projects
+    final allTasks = vm.projects.expand((p) => p.tasks).toList();
+    final tasks = _todayTasks(allTasks);
+    final doneCount = tasks.where((t) => t.isDone).length;
+    final totalCount = tasks.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SectionLabel('Today', bottomPadding: 0),
+            const Spacer(),
+            if (totalCount > 0)
+              MonoText(
+                '$doneCount of $totalCount',
+                size: 12,
+                color: c.textSecondary,
+              ),
+          ],
         ),
+        const SizedBox(height: SpaceTokens.s12),
+
+        // Hairline separator
+        Divider(height: 1, thickness: 1, color: c.border),
+
+        if (tasks.isEmpty)
+          _GhostRow(label: 'Plan your day')
+        else ...[
+          ...tasks.map((task) => _TodayTaskRow(task: task)),
+          // Inline create row
+          _GhostRow(label: 'Add task'),
+        ],
+      ],
+    );
+  }
+}
+
+class _TodayTaskRow extends StatelessWidget {
+  const _TodayTaskRow({required this.task});
+
+  final Task task;
+
+  String _timeLabel() {
+    if (task.dueDate == null) return task.isDone ? 'done' : '';
+    final d = task.dueDate!;
+    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = QColors.of(context);
+    final isDone = task.isDone;
+    final isInProgress = task.status == 'in_progress';
+
+    // Status dot
+    Widget leadingDot;
+    if (isDone) {
+      leadingDot = Icon(Icons.check_circle_rounded, size: 16, color: c.success);
+    } else if (isInProgress) {
+      leadingDot = Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: c.accent,
+          shape: BoxShape.circle,
+        ),
+      );
+    } else {
+      leadingDot = Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: c.border, width: 1.5),
+        ),
+      );
+    }
+
+    final timeLabel = _timeLabel();
+
+    return AppRow(
+      title: task.title,
+      leading: SizedBox(width: 16, child: Center(child: leadingDot)),
+      trailing: timeLabel.isNotEmpty
+          ? MonoText(
+              timeLabel,
+              size: 14,
+              color: isDone ? c.textDisabled : c.textSecondary,
+            )
+          : null,
+      showDivider: true,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 0,
+        vertical: SpaceTokens.s12,
       ),
-      child: SafeArea(
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: items.asMap().entries.map((e) {
-              final i = e.key;
-              final item = e.value;
-              final selected = i == currentIndex;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    onTap(i);
-                  },
-                  child: Container(
-                    color: Colors.transparent,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          selected ? item.$1 : item.$2,
-                          color: selected ? AppColors.primary : AppColors.textMuted,
-                          size: 22,
-                        ),
-                        const SizedBox(height: 2),
-                        AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            color: selected ? AppColors.primary : AppColors.textMuted,
-                            fontSize: 10,
-                            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                          child: Text(item.$3),
-                        ),
-                      ],
+    );
+  }
+}
+
+class _GhostRow extends StatelessWidget {
+  const _GhostRow({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = QColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: SpaceTokens.s12),
+      child: Row(
+        children: [
+          Icon(Icons.add, size: 16, color: c.textDisabled),
+          const SizedBox(width: SpaceTokens.s12),
+          Text(
+            label,
+            style: TextStyles.bodyMd(context).copyWith(color: c.textDisabled),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PIPELINE SECTION
+// ---------------------------------------------------------------------------
+
+class _PipelineSection extends StatelessWidget {
+  const _PipelineSection({required this.onNavigate});
+
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = QColors.of(context);
+    final vm = context.watch<ContactsViewModel>();
+    final contacts = vm.contacts;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SectionLabel('Pipeline', bottomPadding: 0),
+            const Spacer(),
+            MonoText(
+              contacts.isEmpty ? '0 active' : '${contacts.length} active',
+              size: 12,
+              color: c.textSecondary,
+            ),
+          ],
+        ),
+        const SizedBox(height: SpaceTokens.s12),
+
+        if (contacts.isEmpty)
+          AppCard(
+            dense: true,
+            child: Center(
+              child: AppButton(
+                label: 'Add your first deal',
+                variant: AppButtonVariant.secondary,
+                onPressed: () => onNavigate(2), // CRM tab
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: 156,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: contacts.length,
+              separatorBuilder: (_, __) => const SizedBox(width: SpaceTokens.s12),
+              itemBuilder: (context, i) => _PipelineCard(contact: contacts[i]),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PipelineCard extends StatelessWidget {
+  const _PipelineCard({required this.contact});
+
+  final Contact contact;
+
+  String get _stageLabel {
+    switch (contact.relationship.toLowerCase()) {
+      case 'client':
+        return 'CLIENT';
+      case 'prospect':
+        return 'PROSPECT';
+      case 'partner':
+        return 'PARTNER';
+      case 'investor':
+        return 'INVESTOR';
+      default:
+        return contact.relationship.toUpperCase();
+    }
+  }
+
+  String get _nextAction {
+    final days = contact.daysSinceContact;
+    if (days == -1) return 'reach out';
+    if (days == 0) return 'contacted today';
+    if (days <= 7) return 'follow up';
+    return 'overdue ${days}d';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = QColors.of(context);
+
+    return SizedBox(
+      width: 168,
+      child: AppCard(
+        dense: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Contact name
+            Text(
+              contact.name,
+              style: TextStyles.bodyLg(context).copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+
+            // Stage label
+            Text(
+              _stageLabel,
+              style: TextStyles.label(context).copyWith(
+                color: c.textSecondary,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const Spacer(),
+
+            // Hairline divider
+            Divider(height: 1, thickness: 1, color: c.border),
+            const SizedBox(height: SpaceTokens.s8),
+
+            // Next action row
+            Row(
+              children: [
+                Icon(Icons.arrow_forward, size: 12, color: c.accent),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _nextAction,
+                    style: TextStyles.bodySm(context).copyWith(
+                      color: c.textSecondary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+              ],
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PULSE SECTION
+// ---------------------------------------------------------------------------
+
+class _PulseSection extends StatelessWidget {
+  const _PulseSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = QColors.of(context);
+    final finVm = context.watch<FinanceViewModel>();
+    final projVm = context.watch<ProjectsViewModel>();
+
+    final revenue = finVm.totalMonthlyIncome + finVm.totalOneTimeIncomeThisMonth;
+    final expenses = finVm.totalMonthlyExpenses + finVm.totalMonthlyObligations;
+    final net = revenue - expenses;
+
+    // Task completion across all projects
+    final allTasks = projVm.projects.expand((p) => p.tasks).toList();
+    final doneTasks = allTasks.where((t) => t.isDone).length;
+    final totalTasks = allTasks.length;
+
+    // Simple sparkline data: 7 fake but plausible relative values
+    // sourced from real ratio. Week 4 will wire actual time-series.
+    final revenueSparkData = _mockSparkline(revenue);
+    final expenseSparkData = _mockSparkline(expenses, seed: 7);
+
+    final hasData = revenue > 0 || expenses > 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SectionLabel('Pulse', bottomPadding: 0),
+            const Spacer(),
+            Text(
+              'this month',
+              style: TextStyles.bodySm(context).copyWith(color: c.textSecondary),
+            ),
+          ],
+        ),
+        const SizedBox(height: SpaceTokens.s12),
+        Divider(height: 1, thickness: 1, color: c.border),
+
+        if (!hasData) ...[
+          _PulseRow(
+            label: 'Revenue',
+            value: r'$0',
+            sparkData: null,
+            sparkColor: c.accent,
+          ),
+          _PulseRow(
+            label: 'Expenses',
+            value: r'$0',
+            sparkData: null,
+            sparkColor: c.textSecondary,
+          ),
+          _PulseRow(
+            label: 'Net',
+            value: r'$0',
+            sparkData: null,
+            sparkColor: null,
+            isLast: true,
+          ),
+        ] else ...[
+          _PulseRow(
+            label: 'Revenue',
+            value: _fmt(revenue),
+            sparkData: revenueSparkData,
+            sparkColor: c.accent,
+          ),
+          _PulseRow(
+            label: 'Expenses',
+            value: _fmt(expenses),
+            sparkData: expenseSparkData,
+            sparkColor: c.textSecondary,
+          ),
+          _PulseRow(
+            label: 'Net',
+            value: _fmt(net),
+            sparkData: null,
+            sparkColor: null,
+            isLast: false,
+          ),
+        ],
+        _PulseRow(
+          label: 'Tasks done',
+          value: '$doneTasks / $totalTasks',
+          sparkData: null,
+          sparkColor: null,
+          isLast: true,
+          isMono: true,
+        ),
+      ],
+    );
+  }
+
+  String _fmt(double amount) {
+    final abs = amount.abs();
+    final prefix = amount < 0 ? '-\$' : '\$';
+    if (abs >= 1000) {
+      return '$prefix${(abs / 1000).toStringAsFixed(1)}k';
+    }
+    return '$prefix${abs.toStringAsFixed(0)}';
+  }
+
+  // Mock 7-point sparkline that trends toward the value.
+  // Produces a visually plausible shape without fake precision.
+  List<double> _mockSparkline(double value, {int seed = 3}) {
+    if (value == 0) return List.filled(7, 0.0);
+    const steps = 7;
+    final result = <double>[];
+    for (int i = 0; i < steps; i++) {
+      // Simple wave: varies ±30% around value, trending up toward end
+      final factor = 0.7 + (i / (steps - 1)) * 0.3 +
+          (((i + seed) % 3) - 1) * 0.12;
+      result.add((value * factor).clamp(0, double.infinity));
+    }
+    return result;
+  }
+}
+
+class _PulseRow extends StatelessWidget {
+  const _PulseRow({
+    required this.label,
+    required this.value,
+    required this.sparkData,
+    required this.sparkColor,
+    this.isLast = false,
+    this.isMono = false,
+  });
+
+  final String label;
+  final String value;
+  final List<double>? sparkData;
+  final Color? sparkColor;
+  final bool isLast;
+  final bool isMono;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = QColors.of(context);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: SpaceTokens.s12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 88,
+                child: Text(
+                  label,
+                  style: TextStyles.bodyMd(context).copyWith(color: c.textSecondary),
+                ),
+              ),
+              const SizedBox(width: SpaceTokens.s8),
+              MonoText(
+                value,
+                size: 14,
+                weight: FontWeight.w500,
+                color: c.textPrimary,
+              ),
+              const Spacer(),
+              if (sparkData != null && sparkColor != null)
+                _Sparkline(
+                  data: sparkData!,
+                  color: sparkColor!,
+                ),
+            ],
+          ),
+        ),
+        if (!isLast)
+          Divider(height: 1, thickness: 1, color: c.border),
+      ],
+    );
+  }
+}
+
+// Minimal sparkline using CustomPaint — 80×24 points.
+class _Sparkline extends StatelessWidget {
+  const _Sparkline({required this.data, required this.color});
+
+  final List<double> data;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 80,
+      height: 24,
+      child: CustomPaint(
+        painter: _SparklinePainter(data: data, color: color),
+      ),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  const _SparklinePainter({required this.data, required this.color});
+
+  final List<double> data;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty || data.every((v) => v == 0)) return;
+
+    final maxVal = data.reduce((a, b) => a > b ? a : b);
+    if (maxVal == 0) return;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    for (int i = 0; i < data.length; i++) {
+      final x = i * (size.width / (data.length - 1));
+      final y = size.height - (data[i] / maxVal) * size.height;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_SparklinePainter old) =>
+      old.data != data || old.color != color;
+}
+
+// ---------------------------------------------------------------------------
+// MORE SECTION — demoted modules
+// ---------------------------------------------------------------------------
+
+class _MoreSection extends StatelessWidget {
+  const _MoreSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionLabel('More', bottomPadding: SpaceTokens.s12),
+        Divider(height: 1, thickness: 1, color: QColors.of(context).border),
+        AppRow(
+          title: 'Health & Habits',
+          leading: const Icon(Icons.spa_outlined, size: 18),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HabitsScreen()),
+          ),
+        ),
+        AppRow(
+          title: 'Ideas',
+          leading: const Icon(Icons.lightbulb_outline_rounded, size: 18),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const IdeasScreen()),
+          ),
+        ),
+        AppRow(
+          title: 'Family',
+          leading: const Icon(Icons.people_outline_rounded, size: 18),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FamilyDashboardScreen()),
+          ),
+        ),
+        AppRow(
+          title: 'Circles',
+          leading: const Icon(Icons.bubble_chart_outlined, size: 18),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CirclesScreen()),
+          ),
+        ),
+        AppRow(
+          title: 'Gamification',
+          leading: const Icon(Icons.bolt_outlined, size: 18),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GamificationDashboardScreen()),
+          ),
+        ),
+        AppRow(
+          title: 'Admin',
+          leading: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          showDivider: false,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          ),
+        ),
+      ],
     );
   }
 }

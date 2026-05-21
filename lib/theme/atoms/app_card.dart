@@ -16,6 +16,7 @@ class AppCard extends StatelessWidget {
     this.radius = RadiusTokens.mdAll,
     this.onTap,
     this.color,  // override surface color if needed
+    this.dense = false, // dense: 14pt padding instead of 16pt
   });
 
   final Widget child;
@@ -23,6 +24,9 @@ class AppCard extends StatelessWidget {
   final BorderRadius radius;
   final VoidCallback? onTap;
   final Color? color;
+  // dense = true → 14pt padding on all sides (vs 16pt default).
+  // Use for pipeline cards and compact list contexts.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -47,9 +51,14 @@ class AppCard extends StatelessWidget {
             borderRadius: radius,
             splashColor: c.border.withValues(alpha: 0.15),
             highlightColor: c.border.withValues(alpha: 0.08),
-            child: padding != null
-                ? Padding(padding: padding!, child: child)
-                : child,
+            child: () {
+              // Resolve padding: explicit > dense variant > default 16pt
+              final effectivePadding = padding ??
+                  (dense
+                      ? const EdgeInsets.all(14)
+                      : const EdgeInsets.all(SpaceTokens.s16));
+              return Padding(padding: effectivePadding, child: child);
+            }(),
           ),
         ),
       ),

@@ -3,9 +3,12 @@
 // AppRow — tappable list row.
 // Used by Tasks list, pipeline rows, any list item.
 //
-// Layout: [leading] title / subtitle [trailing]
+// Layout: [3px selected bar] [leading] title / subtitle [trailing]
 // Hairline divider below (optional, default: true).
 // 180ms press highlight, no splash circle.
+//
+// Week 2 tuning: isSelected now shows a 3px lime left-edge bar
+// in addition to the soft bg tint. Both animate at 180ms.
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -48,7 +51,9 @@ class AppRow extends StatelessWidget {
     return AnimatedContainer(
       duration: MotionTokens.duration,
       curve: MotionTokens.curve,
-      color: isSelected ? c.selectedRow : Colors.transparent,
+      color: isSelected
+          ? c.selectedRow.withValues(alpha: 0.6)
+          : Colors.transparent,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -57,47 +62,65 @@ class AppRow extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: effectivePadding,
+            // Row containing the selection bar + content
+            IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (leading != null) ...[
-                    leading!,
-                    const SizedBox(width: SpaceTokens.s12),
-                  ],
+                  // 3px lime left-edge selection bar
+                  AnimatedContainer(
+                    duration: MotionTokens.duration,
+                    curve: MotionTokens.curve,
+                    width: isSelected ? 3 : 0,
+                    color: c.selectedRowBar,
+                  ),
+                  // Content area
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          title,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            height: 20 / 14,
-                            color: c.textPrimary,
-                          ),
-                        ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle!,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              height: 18 / 13,
-                              color: c.textSecondary,
+                    child: Padding(
+                      padding: effectivePadding,
+                      child: Row(
+                        children: [
+                          if (leading != null) ...[
+                            leading!,
+                            const SizedBox(width: SpaceTokens.s12),
+                          ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  title,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    height: 20 / 14,
+                                    color: c.textPrimary,
+                                  ),
+                                ),
+                                if (subtitle != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    subtitle!,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w400,
+                                      height: 18 / 13,
+                                      color: c.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
+                          if (trailing != null) ...[
+                            const SizedBox(width: SpaceTokens.s12),
+                            trailing!,
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                  if (trailing != null) ...[
-                    const SizedBox(width: SpaceTokens.s12),
-                    trailing!,
-                  ],
                 ],
               ),
             ),
@@ -107,7 +130,6 @@ class AppRow extends StatelessWidget {
                 thickness: 1,
                 color: c.border,
                 // Align divider to the title text, not the leading widget.
-                // Use a fixed indent when a leading slot is present.
                 indent: leading != null ? SpaceTokens.s48 : 0,
                 endIndent: 0,
               ),
