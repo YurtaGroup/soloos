@@ -41,7 +41,8 @@ import '../../../family/domain/models/contact.dart';
 import '../../../finance/presentation/viewmodels/finance_view_model.dart';
 
 // Nav-destination screens (internals untouched)
-import 'work_hub_screen.dart';
+// work_hub_screen.dart is kept intact — reachable via deep-link / future nav.
+import '../../../work/presentation/screens/tasks_screen.dart';
 import '../../../family/presentation/screens/contacts_screen.dart';
 import '../../../settings/presentation/screens/calendar_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
@@ -70,8 +71,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
   // Static screens for tabs 1-4. Dashboard (tab 0) is built inline.
+  // Tab 1 is now TasksScreen (Week 3). WorkHubScreen remains available
+  // from the More section but is no longer in the primary nav.
   static const _tabScreens = <Widget>[
-    WorkHubScreen(),
+    TasksScreen(),
     ContactsScreen(),
     CalendarScreen(),
     FinanceDashboardScreen(),
