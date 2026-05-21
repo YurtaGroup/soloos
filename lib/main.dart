@@ -26,6 +26,7 @@ import 'features/work/presentation/viewmodels/standup_view_model.dart';
 import 'features/family/presentation/viewmodels/contacts_view_model.dart';
 import 'features/home/presentation/screens/onboarding_screen.dart';
 import 'features/home/presentation/screens/dashboard_screen.dart';
+import 'theme/preview_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -141,6 +142,9 @@ class SoloOSApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeService.mode,
+      routes: {
+        '/ds-preview': (_) => const DesignSystemPreviewScreen(),
+      },
       builder: (context, child) {
         // Gentle global bump so every Text widget reads larger without
         // touching individual screens. Respects the user's system scale:

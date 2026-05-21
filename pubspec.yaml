@@ -39,6 +39,9 @@ dependencies:
   # Speech-to-text
   speech_to_text: ^7.0.0
 
+  # Fonts (Quiet OS design system — Inter + JetBrains Mono)
+  google_fonts: ^6.2.1
+
   # In-App Purchases
   purchases_flutter: ^8.1.0
 

@@ -476,6 +476,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 14),
+              const Divider(color: AppColors.textMuted, height: 1),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/ds-preview'),
+                child: const Row(
+                  children: [
+                    Icon(Icons.palette_outlined, color: AppColors.accent, size: 22),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Design preview',
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+                          Text('Quiet OS — tokens & atoms (light + dark)',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                  ],
+                ),
+              ),
             ]),
             const SizedBox(height: 14),
           ],
