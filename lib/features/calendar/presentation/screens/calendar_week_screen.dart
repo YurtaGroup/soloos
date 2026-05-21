@@ -329,20 +329,23 @@ class _WeekGrid extends StatelessWidget {
         // ── DAY COLUMN HEADERS ────────────────────────────────────────
         Container(
           color: c.surface,
-          child: Row(
-            children: [
-              // Empty corner above the hour labels
-              SizedBox(width: _kTimeColW),
-              Container(width: 1, height: 36, color: c.border),
-              // Day columns
-              ...List.generate(7, (i) {
-                final day = days[i];
-                final isToday = _sameDay(day, DateTime.now());
-                return Expanded(
-                  child: _DayHeader(day: day, isToday: isToday),
-                );
-              }),
-            ],
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Empty corner above the hour labels
+                SizedBox(width: _kTimeColW),
+                Container(width: 1, color: c.border),
+                // Day columns
+                ...List.generate(7, (i) {
+                  final day = days[i];
+                  final isToday = _sameDay(day, DateTime.now());
+                  return Expanded(
+                    child: _DayHeader(day: day, isToday: isToday),
+                  );
+                }),
+              ],
+            ),
           ),
         ),
         Container(height: 1, color: c.border),
@@ -398,11 +401,10 @@ class _DayHeader extends StatelessWidget {
     final c = QColors.of(context);
     final labelColor = isToday ? c.accent : c.textSecondary;
 
-    return Container(
-      height: 36,
-      alignment: Alignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             DateFormat('E').format(day).toUpperCase(),
@@ -411,7 +413,7 @@ class _DayHeader extends StatelessWidget {
               letterSpacing: 0.4,
             ),
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 2),
           MonoText(
             '${day.day}',
             size: 13,
