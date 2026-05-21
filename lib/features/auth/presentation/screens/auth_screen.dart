@@ -4,7 +4,11 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../services/api_service.dart';
-import '../../../../theme/app_theme.dart';
+import '../../../../theme/app_colors.dart';
+import '../../../../theme/tokens.dart';
+import '../../../../theme/text_styles.dart';
+import '../../../../theme/atoms/app_button.dart';
+import '../../../../theme/atoms/app_input.dart';
 
 class AuthScreen extends StatefulWidget {
   final VoidCallback? onAuthSuccess;
@@ -37,7 +41,6 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _tryBiometricLogin() async {
-    // Only attempt biometric if user was previously logged in and enabled it
     if (!ApiService.isAuthenticated) return;
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool('biometric_enabled') ?? false;
@@ -73,11 +76,10 @@ class _AuthScreenState extends State<AuthScreen> {
       final identityToken = credential.identityToken;
       final authorizationCode = credential.authorizationCode;
       if (identityToken == null) {
-        setState(() => _error = 'Apple Sign-In failed: no token received');
+        setState(() => _error = 'Apple Sign-In failed: no token received.');
         return;
       }
 
-      // Apple only provides name on first sign-in
       String? displayName;
       if (credential.givenName != null || credential.familyName != null) {
         displayName = [credential.givenName, credential.familyName]
@@ -112,15 +114,15 @@ class _AuthScreenState extends State<AuthScreen> {
     final name = _nameCtrl.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Email and password are required');
+      setState(() => _error = 'Email and password are required.');
       return;
     }
     if (!_isLogin && name.isEmpty) {
-      setState(() => _error = 'Name is required');
+      setState(() => _error = 'Name is required.');
       return;
     }
     if (password.length < 6) {
-      setState(() => _error = 'Password must be at least 6 characters');
+      setState(() => _error = 'Password must be at least 6 characters.');
       return;
     }
 
@@ -139,7 +141,6 @@ class _AuthScreenState extends State<AuthScreen> {
           displayName: name,
         );
       }
-      // Notify parent to rebuild with authenticated state
       widget.onAuthSuccess?.call();
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -152,152 +153,127 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: SpaceTokens.s32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo area
-                const Text('Solo OS',
-                    style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -1)),
-                const SizedBox(height: 6),
-                const Text('Your personal operating system',
-                    style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 14)),
-                const SizedBox(height: 48),
+                // Brand mark
+                Text(
+                  'Solo OS',
+                  style: TextStyles.displayLg(context),
+                ),
+                const SizedBox(height: SpaceTokens.s4),
+                Text(
+                  'Your personal operating system',
+                  style: TextStyles.bodyMd(context).copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: SpaceTokens.s48),
 
-                // Title
+                // Screen title
                 Text(
                   _isLogin ? 'Welcome back' : 'Create your account',
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600),
+                  style: TextStyles.displayMd(context),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: SpaceTokens.s24),
 
-                // Name field (signup only)
+                // Name (signup only)
                 if (!_isLogin) ...[
-                  _buildField(
+                  AppInput(
                     controller: _nameCtrl,
-                    hint: 'Your name',
-                    icon: Icons.person_outline,
+                    hintText: 'Your name',
+                    prefixIcon: const Icon(Icons.person_outlined),
                     textInputAction: TextInputAction.next,
+                    keyboardType: TextInputType.name,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: SpaceTokens.s12),
                 ],
 
                 // Email
-                _buildField(
+                AppInput(
                   controller: _emailCtrl,
-                  hint: 'Email',
-                  icon: Icons.email_outlined,
+                  hintText: 'Email',
+                  prefixIcon: const Icon(Icons.email_outlined),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: SpaceTokens.s12),
 
                 // Password
-                _buildField(
+                AppInput(
                   controller: _passwordCtrl,
-                  hint: 'Password',
-                  icon: Icons.lock_outline,
-                  obscure: true,
+                  hintText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_outlined),
+                  obscureText: true,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
                 ),
 
-                // Error
+                // Error banner
                 if (_error != null) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: SpaceTokens.s12),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(SpaceTokens.s12),
                     decoration: BoxDecoration(
-                      color: AppColors.accentRed.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppColors.accentRed.withOpacity(0.3)),
+                      color: c.danger.withValues(alpha: 0.08),
+                      borderRadius: RadiusTokens.smAll,
+                      border: Border.all(color: c.danger.withValues(alpha: 0.3)),
                     ),
                     child: Text(_error!,
-                        style: const TextStyle(
-                            color: AppColors.accentRed, fontSize: 13)),
+                        style: TextStyles.bodySm(context).copyWith(color: c.dangerFg)),
                   ),
                 ],
 
-                const SizedBox(height: 24),
+                const SizedBox(height: SpaceTokens.s24),
 
-                // Submit button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                      disabledBackgroundColor:
-                          AppColors.primary.withOpacity(0.5),
-                    ),
-                    child: _loading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : Text(
-                            _isLogin ? 'Sign In' : 'Create Account',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600),
-                          ),
-                  ),
+                // Primary CTA
+                AppButton(
+                  label: _isLogin ? 'Sign In' : 'Create Account',
+                  isFullWidth: true,
+                  size: AppButtonSize.lg,
+                  isLoading: _loading,
+                  onPressed: _loading ? null : _submit,
                 ),
 
-                // Apple Sign-In
+                // Apple Sign-In (iOS only)
                 if (Platform.isIOS) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: SpaceTokens.s16),
                   Row(
                     children: [
-                      Expanded(child: Divider(color: AppColors.textMuted.withAlpha(60))),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text('or', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                      Expanded(child: Divider(color: c.border)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: SpaceTokens.s16),
+                        child: Text('or',
+                            style: TextStyles.bodySm(context)
+                                .copyWith(color: c.textSecondary)),
                       ),
-                      Expanded(child: Divider(color: AppColors.textMuted.withAlpha(60))),
+                      Expanded(child: Divider(color: c.border)),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _loading ? null : _signInWithApple,
-                      icon: const Icon(Icons.apple, size: 22),
-                      label: const Text('Sign in with Apple',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
+                  const SizedBox(height: SpaceTokens.s16),
+                  // Apple button — white bg + black text per Apple HIG
+                  AppButton(
+                    label: 'Sign in with Apple',
+                    isFullWidth: true,
+                    size: AppButtonSize.lg,
+                    variant: AppButtonVariant.secondary,
+                    leadingIcon: const Icon(Icons.apple),
+                    isLoading: _loading,
+                    onPressed: _loading ? null : _signInWithApple,
                   ),
                 ],
 
-                const SizedBox(height: 20),
+                const SizedBox(height: SpaceTokens.s24),
 
-                // Toggle login/signup
+                // Toggle login / signup
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -305,61 +281,24 @@ class _AuthScreenState extends State<AuthScreen> {
                       _isLogin
                           ? "Don't have an account? "
                           : 'Already have an account? ',
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyles.bodyMd(context)
+                          .copyWith(color: c.textSecondary),
                     ),
-                    GestureDetector(
-                      onTap: () => setState(() {
+                    AppButton(
+                      label: _isLogin ? 'Sign Up' : 'Sign In',
+                      variant: AppButtonVariant.ghost,
+                      size: AppButtonSize.sm,
+                      onPressed: () => setState(() {
                         _isLogin = !_isLogin;
                         _error = null;
                       }),
-                      child: Text(
-                        _isLogin ? 'Sign Up' : 'Sign In',
-                        style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600),
-                      ),
                     ),
                   ],
                 ),
-
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    bool obscure = false,
-    TextInputType? keyboardType,
-    TextInputAction? textInputAction,
-    void Function(String)? onSubmitted,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      onSubmitted: onSubmitted,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
-        filled: true,
-        fillColor: AppColors.card,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }

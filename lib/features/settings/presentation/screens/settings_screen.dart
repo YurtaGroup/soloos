@@ -3,7 +3,16 @@ import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../theme/app_theme.dart';
+import '../../../../theme/app_colors.dart';
+import '../../../../theme/tokens.dart';
+import '../../../../theme/text_styles.dart';
+import '../../../../theme/atoms/section_label.dart';
+import '../../../../theme/atoms/app_card.dart';
+import '../../../../theme/atoms/app_button.dart';
+import '../../../../theme/atoms/app_row.dart';
+import '../../../../theme/atoms/app_pill.dart';
+import '../../../../theme/atoms/app_input.dart';
+import '../../../../theme/atoms/mono_text.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/locale_service.dart';
 import '../../../../services/google_calendar_service.dart';
@@ -16,9 +25,6 @@ import '../../../auth/presentation/screens/auth_screen.dart';
 import '../../../home/presentation/screens/onboarding_screen.dart';
 import '../../../home/presentation/screens/dashboard_screen.dart';
 import '../../../admin/presentation/screens/admin_dashboard_screen.dart';
-// Legacy CalendarScreen import removed — routing now points to CalendarSettingsScreen.
-// The legacy file at settings/presentation/screens/calendar_screen.dart is untouched
-// and will be deleted in the cleanup commit.
 import '../../../calendar/presentation/screens/calendar_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -67,64 +73,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     final loc = context.watch<LocaleService>();
     final calService = context.watch<GoogleCalendarService>();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(loc.t('settings_title'))),
+      appBar: AppBar(title: Text(loc.t('settings_title'), style: TextStyles.displayMd(context))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(SpaceTokens.s16),
         children: [
 
           // ── Profile ──────────────────────────────────────────
-          _Section(title: loc.t('profile_section'), children: [
-            _FieldRow(
-              label: loc.t('your_name'),
-              controller: _nameCtrl,
-              saveLabel: loc.t('save'),
-              onSaved: () async {
-                await _storage.setUserName(_nameCtrl.text.trim());
-                if (mounted) _snack(loc.t('name_saved'));
-              },
+          SectionLabel(loc.t('profile_section')),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(loc.t('your_name'),
+                    style: TextStyles.bodySm(context).copyWith(color: c.textSecondary)),
+                const SizedBox(height: SpaceTokens.s8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppInput(
+                        controller: _nameCtrl,
+                        hintText: loc.t('your_name'),
+                        textInputAction: TextInputAction.done,
+                      ),
+                    ),
+                    const SizedBox(width: SpaceTokens.s8),
+                    AppButton(
+                      label: loc.t('save'),
+                      size: AppButtonSize.sm,
+                      onPressed: () async {
+                        await _storage.setUserName(_nameCtrl.text.trim());
+                        if (mounted) _snack(loc.t('name_saved'));
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ]),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Language ─────────────────────────────────────────
-          _Section(title: loc.t('language_section'), children: [
-            Column(
+          SectionLabel(loc.t('language_section')),
+          AppCard(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(loc.t('language_label'),
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                const SizedBox(height: 10),
+                    style: TextStyles.bodySm(context).copyWith(color: c.textSecondary)),
+                const SizedBox(height: SpaceTokens.s8),
                 Row(
                   children: LocaleService.languages.map((lang) {
                     final selected = loc.locale == lang.code;
                     return Expanded(
                       child: GestureDetector(
                         onTap: () => context.read<LocaleService>().setLocale(lang.code),
-                        child: Container(
-                          margin: EdgeInsets.only(right: lang.code != 'ky' ? 8 : 0),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: AnimatedContainer(
+                          duration: MotionTokens.duration,
+                          curve: MotionTokens.curve,
+                          margin: EdgeInsets.only(right: lang.code != 'ky' ? SpaceTokens.s8 : 0),
+                          padding: const EdgeInsets.symmetric(vertical: SpaceTokens.s8),
                           decoration: BoxDecoration(
-                            color: selected ? AppColors.primary.withOpacity(0.15) : AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
+                            color: selected ? c.accent.withValues(alpha: 0.12) : c.surfaceMuted,
+                            borderRadius: RadiusTokens.smAll,
                             border: Border.all(
-                              color: selected ? AppColors.primary : AppColors.textMuted.withOpacity(0.3),
+                              color: selected ? c.accent : c.border,
                             ),
                           ),
                           child: Column(
                             children: [
                               Text(lang.flag, style: const TextStyle(fontSize: 20)),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: SpaceTokens.s4),
                               Text(
                                 lang.name,
-                                style: TextStyle(
-                                  color: selected ? AppColors.primary : AppColors.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                                style: TextStyles.bodySm(context).copyWith(
+                                  color: selected ? c.textPrimary : c.textSecondary,
+                                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                                 ),
                               ),
                             ],
@@ -136,740 +164,606 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-          ]),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Appearance ──────────────────────────────────────
-          _Section(title: loc.t('appearance_section'), children: [
-            Row(
-              children: [
-                Icon(
-                  context.watch<ThemeService>().isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  color: AppColors.accent,
-                  size: 22,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(loc.t('theme_label'),
-                          style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
-                      Text(
-                        context.watch<ThemeService>().isDark ? loc.t('theme_dark') : loc.t('theme_light'),
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch.adaptive(
-                  value: context.watch<ThemeService>().isDark,
-                  activeColor: AppColors.primary,
-                  onChanged: (_) => context.read<ThemeService>().toggle(),
-                ),
-              ],
+          SectionLabel(loc.t('appearance_section')),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: AppRow(
+              title: loc.t('theme_label'),
+              subtitle: context.watch<ThemeService>().isDark
+                  ? loc.t('theme_dark')
+                  : loc.t('theme_light'),
+              leading: Icon(
+                context.watch<ThemeService>().isDark
+                    ? Icons.dark_mode_outlined
+                    : Icons.light_mode_outlined,
+                size: 20,
+                color: c.textSecondary,
+              ),
+              showDivider: false,
+              trailing: Switch.adaptive(
+                value: context.watch<ThemeService>().isDark,
+                activeThumbColor: c.accent,
+                onChanged: (_) => context.read<ThemeService>().toggle(),
+              ),
             ),
-          ]),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Security ──────────────────────────────────────
-          if (_biometricAvailable)
-            _Section(title: loc.t('security_section'), children: [
-              Row(
-                children: [
-                  const Icon(Icons.fingerprint_rounded, color: AppColors.accentGreen, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(loc.t('biometric_label'),
-                            style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500)),
-                        Text(loc.t('biometric_sub'),
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Switch.adaptive(
-                    value: _biometricEnabled,
-                    activeColor: AppColors.primary,
-                    onChanged: (val) async {
-                      if (val) {
-                        // Verify biometric before enabling
-                        final auth = LocalAuthentication();
-                        final ok = await auth.authenticate(
-                          localizedReason: loc.t('biometric_reason'),
-                          options: const AuthenticationOptions(biometricOnly: true),
-                        );
-                        if (!ok) return;
-                      }
-                      await _storage.prefs.setBool('biometric_enabled', val);
-                      setState(() => _biometricEnabled = val);
-                    },
-                  ),
-                ],
+          if (_biometricAvailable) ...[
+            SectionLabel(loc.t('security_section')),
+            AppCard(
+              padding: EdgeInsets.zero,
+              child: AppRow(
+                title: loc.t('biometric_label'),
+                subtitle: loc.t('biometric_sub'),
+                leading: Icon(Icons.fingerprint_rounded, size: 20, color: c.textSecondary),
+                showDivider: false,
+                trailing: Switch.adaptive(
+                  value: _biometricEnabled,
+                  activeThumbColor: c.accent,
+                  onChanged: (val) async {
+                    if (val) {
+                      final auth = LocalAuthentication();
+                      final ok = await auth.authenticate(
+                        localizedReason: loc.t('biometric_reason'),
+                        options: const AuthenticationOptions(biometricOnly: true),
+                      );
+                      if (!ok) return;
+                    }
+                    await _storage.prefs.setBool('biometric_enabled', val);
+                    setState(() => _biometricEnabled = val);
+                  },
+                ),
               ),
-            ]),
-          if (_biometricAvailable) const SizedBox(height: 14),
+            ),
+            const SizedBox(height: SpaceTokens.s16),
+          ],
 
           // ── Account ──────────────────────────────────────────
-          _Section(title: 'Account', children: [
-            if (ApiService.isAuthenticated)
-              Row(
-                children: [
-                  const Icon(Icons.person_rounded, color: AppColors.primary, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(ApiService.email ?? 'Signed in',
-                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                        const Text('Syncing across devices',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      await ApiService.signOut();
-                      if (mounted) {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-                          (route) => false,
-                        );
-                      }
-                    },
-                    child: const Text('Sign Out', style: TextStyle(color: AppColors.accentRed, fontSize: 13)),
-                  ),
-                ],
-              )
-            else
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AuthScreen(
-                        onAuthSuccess: () {
+          SectionLabel('Account'),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: ApiService.isAuthenticated
+                ? AppRow(
+                    title: ApiService.email ?? 'Signed in',
+                    subtitle: 'Syncing across devices',
+                    leading: Icon(Icons.person_outlined, size: 20, color: c.textSecondary),
+                    showDivider: false,
+                    trailing: AppButton(
+                      label: 'Sign Out',
+                      variant: AppButtonVariant.ghost,
+                      size: AppButtonSize.sm,
+                      onPressed: () async {
+                        await ApiService.signOut();
+                        if (mounted) {
                           Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                             (route) => false,
                           );
-                        },
-                      ),
+                        }
+                      },
                     ),
-                  );
-                },
-                child: const Row(
-                  children: [
-                    Icon(Icons.login_rounded, color: AppColors.primary, size: 22),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Sign In',
-                              style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600)),
-                          Text('Sync your data and invite collaborators',
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-                  ],
-                ),
-              ),
-          ]),
-          const SizedBox(height: 14),
+                  )
+                : AppRow(
+                    title: 'Sign In',
+                    subtitle: 'Sync your data and invite collaborators',
+                    leading: Icon(Icons.login_outlined, size: 20, color: c.textSecondary),
+                    showDivider: false,
+                    trailing: Icon(Icons.chevron_right_rounded, size: 18, color: c.textSecondary),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AuthScreen(
+                            onAuthSuccess: () {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                                (route) => false,
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Subscription ──────────────────────────────────────
-          _buildSubscriptionSection(loc),
-          const SizedBox(height: 14),
+          _buildSubscriptionSection(loc, c),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Notifications ─────────────────────────────────────
-          _Section(title: loc.t('notifications_section'), children: [
-            Row(
+          SectionLabel(loc.t('notifications_section')),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: AppRow(
+              title: loc.t('daily_digest_title'),
+              subtitle: loc.t('daily_digest_sub'),
+              leading: Icon(Icons.notifications_outlined, size: 20, color: c.textSecondary),
+              showDivider: false,
+              trailing: Switch.adaptive(
+                value: _digestEnabled,
+                activeThumbColor: c.accent,
+                onChanged: (val) async {
+                  await _notifs.toggleDailyDigest(val);
+                  setState(() => _digestEnabled = val);
+                  if (val && mounted) {
+                    _snack(loc.t('daily_digest_enabled'));
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
+
+          // ── Share ─────────────────────────────────────────────
+          SectionLabel(loc.t('share_section')),
+          AppCard(
+            child: Column(
               children: [
-                const Icon(Icons.notifications_active_rounded,
-                    color: AppColors.accent, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(loc.t('daily_digest_title'),
-                          style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
-                      Text(loc.t('daily_digest_sub'),
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                Switch.adaptive(
-                  value: _digestEnabled,
-                  activeColor: AppColors.primary,
-                  onChanged: (val) async {
-                    await _notifs.toggleDailyDigest(val);
-                    setState(() => _digestEnabled = val);
-                    if (val && mounted) {
-                      _snack(loc.t('daily_digest_enabled'));
-                    }
+                AppButton(
+                  label: loc.t('share_btn'),
+                  isFullWidth: true,
+                  leadingIcon: const Icon(Icons.share_outlined),
+                  onPressed: () {
+                    Share.share(
+                      'I\'m using Solo OS to run my solopreneur life — '
+                      'finances, projects, habits, and AI ideas all in one place. '
+                      'Try it free for 30 days!\n\nhttps://soloos.app',
+                    );
                   },
+                ),
+                const SizedBox(height: SpaceTokens.s8),
+                Text(
+                  loc.t('share_sub'),
+                  style: TextStyles.bodySm(context).copyWith(color: c.textSecondary),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
-          ]),
-          const SizedBox(height: 14),
-
-          // ── Share & Invite ─────────────────────────────────────
-          _Section(title: loc.t('share_section'), children: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Share.share(
-                    'I\'m using Solo OS to run my solopreneur life — '
-                    'finances, projects, habits, and AI ideas all in one place. '
-                    'Try it free for 30 days!\n\n'
-                    'https://soloos.app',
-                  );
-                },
-                icon: const Icon(Icons.share_rounded, size: 18),
-                label: Text(loc.t('share_btn')),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentGreen,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              loc.t('share_sub'),
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-              textAlign: TextAlign.center,
-            ),
-          ]),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── AI Settings ───────────────────────────────────────
-          _Section(title: loc.t('ai_settings'), children: [
-            Column(
+          SectionLabel(loc.t('ai_settings')),
+          AppCard(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(loc.t('api_key_label'),
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                const SizedBox(height: 8),
+                    style: TextStyles.bodySm(context).copyWith(color: c.textSecondary)),
+                const SizedBox(height: SpaceTokens.s8),
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: AppInput(
                         controller: _apiKeyCtrl,
+                        hintText: loc.t('api_key_hint'),
                         obscureText: !_apiKeyVisible,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                        decoration: InputDecoration(
-                          hintText: loc.t('api_key_hint'),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _apiKeyVisible ? Icons.visibility_off : Icons.visibility,
-                              color: AppColors.textMuted,
-                              size: 18,
-                            ),
-                            onPressed: () => setState(() => _apiKeyVisible = !_apiKeyVisible),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _apiKeyVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            size: 18,
                           ),
+                          onPressed: () => setState(() => _apiKeyVisible = !_apiKeyVisible),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
+                    const SizedBox(width: SpaceTokens.s8),
+                    AppButton(
+                      label: loc.t('save'),
+                      size: AppButtonSize.sm,
                       onPressed: () async {
                         await _storage.setApiKey(_apiKeyCtrl.text.trim());
                         if (mounted) _snack(loc.t('api_key_saved'));
                       },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                      ),
-                      child: Text(loc.t('save')),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: SpaceTokens.s4),
                 Text(loc.t('api_key_help'),
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    style: TextStyles.bodySm(context).copyWith(color: c.textSecondary)),
               ],
             ),
-          ]),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Google Calendar ───────────────────────────────────
-          _Section(title: loc.t('google_calendar_section'), children: [
-            Row(
-              children: [
-                const Icon(Icons.calendar_month_rounded, color: AppColors.accentBlue, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        calService.isSignedIn ? loc.t('connected') : loc.t('not_connected'),
-                        style: TextStyle(
-                          color: calService.isSignedIn ? AppColors.accentGreen : AppColors.textSecondary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (calService.isSignedIn)
-                        Text(calService.userEmail,
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                    ],
-                  ),
+          SectionLabel(loc.t('google_calendar_section')),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: AppRow(
+              title: calService.isSignedIn ? loc.t('connected') : loc.t('not_connected'),
+              subtitle: calService.isSignedIn ? calService.userEmail : null,
+              leading: Icon(Icons.calendar_month_outlined, size: 20, color: c.textSecondary),
+              showDivider: false,
+              trailing: AppButton(
+                label: calService.isSignedIn ? loc.t('see_all') : loc.t('connect_google_cal'),
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CalendarSettingsScreen()),
                 ),
-                ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const CalendarSettingsScreen()),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentBlue,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  child: Text(
-                    calService.isSignedIn ? loc.t('see_all') : loc.t('connect_google_cal'),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ]),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Admin (only for app owner) ─────────────────────────
           if (ApiService.email == 'timur.mone@gmail.com') ...[
-            _Section(title: 'COMMAND CENTER', children: [
-              GestureDetector(
-                onTap: () {
-                  AnalyticsService().featureUsed('admin_dashboard');
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
-                },
-                child: const Row(
-                  children: [
-                    Icon(Icons.dashboard_rounded, color: AppColors.accent, size: 22),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Admin Dashboard',
-                              style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                          Text('Users, metrics, analytics',
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-                  ],
-                ),
+            SectionLabel('Command Center'),
+            AppCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  AppRow(
+                    title: 'Admin Dashboard',
+                    subtitle: 'Users, metrics, analytics',
+                    leading: Icon(Icons.dashboard_outlined, size: 20, color: c.textSecondary),
+                    trailing: Icon(Icons.chevron_right_rounded, size: 18, color: c.textSecondary),
+                    onTap: () {
+                      AnalyticsService().featureUsed('admin_dashboard');
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
+                    },
+                  ),
+                  AppRow(
+                    title: 'Design preview',
+                    subtitle: 'Quiet OS — tokens and atoms',
+                    leading: Icon(Icons.palette_outlined, size: 20, color: c.textSecondary),
+                    showDivider: false,
+                    trailing: Icon(Icons.chevron_right_rounded, size: 18, color: c.textSecondary),
+                    onTap: () => Navigator.pushNamed(context, '/ds-preview'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              const Divider(color: AppColors.textMuted, height: 1),
-              const SizedBox(height: 14),
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, '/ds-preview'),
-                child: const Row(
-                  children: [
-                    Icon(Icons.palette_outlined, color: AppColors.accent, size: 22),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Design preview',
-                              style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
-                          Text('Quiet OS — tokens & atoms (light + dark)',
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-                  ],
-                ),
-              ),
-            ]),
-            const SizedBox(height: 14),
+            ),
+            const SizedBox(height: SpaceTokens.s16),
           ],
 
           // ── Privacy ──────────────────────────────────────────────
-          _Section(title: loc.t('privacy_section'), children: [
-            // Analytics toggle
-            Row(
+          SectionLabel(loc.t('privacy_section')),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
               children: [
-                const Icon(Icons.bar_chart_rounded, color: AppColors.accentBlue, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(loc.t('analytics_label'),
-                          style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
-                      Text(loc.t('analytics_sub'),
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                    ],
+                AppRow(
+                  title: loc.t('analytics_label'),
+                  subtitle: loc.t('analytics_sub'),
+                  leading: Icon(Icons.bar_chart_outlined, size: 20, color: c.textSecondary),
+                  trailing: Switch.adaptive(
+                    value: _analyticsEnabled,
+                    activeThumbColor: c.accent,
+                    onChanged: (val) async {
+                      await AnalyticsService().setEnabled(val);
+                      setState(() => _analyticsEnabled = val);
+                      if (mounted) _snack(val ? loc.t('analytics_enabled') : loc.t('analytics_disabled'));
+                    },
                   ),
                 ),
-                Switch.adaptive(
-                  value: _analyticsEnabled,
-                  activeColor: AppColors.primary,
-                  onChanged: (val) async {
-                    await AnalyticsService().setEnabled(val);
-                    setState(() => _analyticsEnabled = val);
-                    if (mounted) _snack(val ? loc.t('analytics_enabled') : loc.t('analytics_disabled'));
-                  },
+                AppRow(
+                  title: loc.t('ai_disclosure_title'),
+                  subtitle: _aiConsentGiven ? 'Enabled' : 'Disabled',
+                  leading: Icon(Icons.smart_toy_outlined, size: 20, color: c.textSecondary),
+                  trailing: Switch.adaptive(
+                    value: _aiConsentGiven,
+                    activeThumbColor: c.accent,
+                    onChanged: (val) async {
+                      if (val) {
+                        final accepted = await _showAiDisclosure();
+                        if (accepted != true) return;
+                      }
+                      await _storage.setAiConsentGiven(val);
+                      setState(() => _aiConsentGiven = val);
+                    },
+                  ),
+                ),
+                AppRow(
+                  title: loc.t('privacy_policy'),
+                  leading: Icon(Icons.privacy_tip_outlined, size: 20, color: c.textSecondary),
+                  trailing: Icon(Icons.open_in_new_rounded, size: 14, color: c.textSecondary),
+                  onTap: () => launchUrl(Uri.parse('https://soloos.app/privacy')),
+                ),
+                AppRow(
+                  title: loc.t('terms_of_use'),
+                  leading: Icon(Icons.description_outlined, size: 20, color: c.textSecondary),
+                  showDivider: false,
+                  trailing: Icon(Icons.open_in_new_rounded, size: 14, color: c.textSecondary),
+                  onTap: () => launchUrl(Uri.parse('https://soloos.app/terms')),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            // AI data disclosure
-            Row(
-              children: [
-                const Icon(Icons.smart_toy_rounded, color: AppColors.accent, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(loc.t('ai_disclosure_title'),
-                          style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
-                      Text(
-                        _aiConsentGiven ? 'Enabled' : 'Disabled',
-                        style: TextStyle(
-                          color: _aiConsentGiven ? AppColors.accentGreen : AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch.adaptive(
-                  value: _aiConsentGiven,
-                  activeColor: AppColors.primary,
-                  onChanged: (val) async {
-                    if (val) {
-                      final accepted = await _showAiDisclosure();
-                      if (accepted != true) return;
-                    }
-                    await _storage.setAiConsentGiven(val);
-                    setState(() => _aiConsentGiven = val);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            // Privacy policy link
-            GestureDetector(
-              onTap: () => launchUrl(Uri.parse('https://soloos.app/privacy')),
-              child: Row(
-                children: [
-                  const Icon(Icons.privacy_tip_outlined, color: AppColors.primary, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(loc.t('privacy_policy'),
-                        style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ),
-                  const Icon(Icons.open_in_new_rounded, color: AppColors.textMuted, size: 16),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => launchUrl(Uri.parse('https://soloos.app/terms')),
-              child: Row(
-                children: [
-                  const Icon(Icons.description_outlined, color: AppColors.primary, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(loc.t('terms_of_use'),
-                        style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ),
-                  const Icon(Icons.open_in_new_rounded, color: AppColors.textMuted, size: 16),
-                ],
-              ),
-            ),
-          ]),
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── About ─────────────────────────────────────────────
-          _Section(title: loc.t('about_section'), children: [
-            _InfoRow(loc.t('version'), '1.1.0'),
-            _InfoRow(loc.t('model'), 'Claude Sonnet 4'),
-            _InfoRow(loc.t('storage'), loc.t('storage_val')),
-          ]),
-          const SizedBox(height: 14),
+          SectionLabel(loc.t('about_section')),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                AppRow(
+                  title: loc.t('version'),
+                  trailing: MonoText('1.1.0', color: c.textSecondary),
+                ),
+                AppRow(
+                  title: loc.t('model'),
+                  trailing: MonoText('Claude Sonnet 4', color: c.textSecondary),
+                ),
+                AppRow(
+                  title: loc.t('storage'),
+                  showDivider: false,
+                  trailing: MonoText(loc.t('storage_val'), color: c.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: SpaceTokens.s16),
 
           // ── Danger Zone ───────────────────────────────────────
-          _Section(title: loc.t('danger_zone'), children: [
-            TextButton.icon(
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: AppColors.card,
-                    title: Text(loc.t('reset_confirm_title'),
-                        style: const TextStyle(color: AppColors.textPrimary)),
-                    content: Text(loc.t('reset_confirm_body'),
-                        style: const TextStyle(color: AppColors.textSecondary)),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: Text(loc.t('cancel')),
+          SectionLabel(loc.t('danger_zone')),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppButton(
+                  label: loc.t('reset_all'),
+                  variant: AppButtonVariant.ghost,
+                  leadingIcon: const Icon(Icons.delete_forever_outlined),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(loc.t('reset_confirm_title')),
+                        content: Text(loc.t('reset_confirm_body')),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(loc.t('cancel')),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: TextButton.styleFrom(foregroundColor: c.danger),
+                            child: Text(loc.t('reset_all')),
+                          ),
+                        ],
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
-                        child: Text(loc.t('reset_all')),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true && mounted) {
-                  await _storage.prefs.clear();
-                  if (mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-                      (_) => false,
                     );
-                  }
-                }
-              },
-              icon: const Icon(Icons.delete_forever_outlined, color: AppColors.accentRed),
-              label: Text(loc.t('reset_all'),
-                  style: const TextStyle(color: AppColors.accentRed)),
-            ),
-            if (ApiService.isAuthenticated) ...[
-              const SizedBox(height: 8),
-              const Divider(color: AppColors.textMuted, height: 1),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: AppColors.card,
-                      title: Text(loc.t('delete_account_title'),
-                          style: const TextStyle(color: AppColors.textPrimary)),
-                      content: Text(loc.t('delete_account_body'),
-                          style: const TextStyle(color: AppColors.textSecondary, height: 1.5)),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: Text(loc.t('cancel')),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
-                          child: Text(loc.t('delete_account_confirm')),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirm == true && mounted) {
-                    _snack(loc.t('loading'));
-                    final ok = await ApiService.deleteAccount();
-                    if (!mounted) return;
-                    if (ok) {
+                    if (confirm == true && mounted) {
                       await _storage.prefs.clear();
                       if (mounted) {
-                        _snack(loc.t('delete_account_success'));
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                           (_) => false,
                         );
                       }
-                    } else {
-                      _snack(loc.t('delete_account_failed'));
                     }
-                  }
-                },
-                icon: const Icon(Icons.person_off_rounded, color: AppColors.accentRed),
-                label: Text(loc.t('delete_account'),
-                    style: const TextStyle(color: AppColors.accentRed)),
-              ),
-            ],
-          ]),
-          const SizedBox(height: 32),
+                  },
+                ),
+                if (ApiService.isAuthenticated) ...[
+                  const SizedBox(height: SpaceTokens.s8),
+                  Divider(color: c.border, height: 1),
+                  const SizedBox(height: SpaceTokens.s8),
+                  AppButton(
+                    label: loc.t('delete_account'),
+                    variant: AppButtonVariant.ghost,
+                    leadingIcon: const Icon(Icons.person_off_outlined),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text(loc.t('delete_account_title')),
+                          content: Text(loc.t('delete_account_body')),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: Text(loc.t('cancel')),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: TextButton.styleFrom(foregroundColor: c.danger),
+                              child: Text(loc.t('delete_account_confirm')),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && mounted) {
+                        _snack(loc.t('loading'));
+                        final ok = await ApiService.deleteAccount();
+                        if (!mounted) return;
+                        if (ok) {
+                          await _storage.prefs.clear();
+                          if (mounted) {
+                            _snack(loc.t('delete_account_success'));
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                              (_) => false,
+                            );
+                          }
+                        } else {
+                          _snack(loc.t('delete_account_failed'));
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: SpaceTokens.s32),
         ],
       ),
     );
   }
 
-  Widget _buildSubscriptionSection(LocaleService loc) {
+  Widget _buildSubscriptionSection(LocaleService loc, QColorSet c) {
     final pro = ProService();
     final isActive = pro.hasAccess;
     final isPro = pro.isPro;
     final trialDays = pro.trialDaysLeft;
 
-    return _Section(
-      title: loc.t('subscription_section'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isPro) ...[
-          const Row(
+        SectionLabel(loc.t('subscription_section')),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.workspace_premium_rounded, color: AppColors.accent, size: 24),
-              SizedBox(width: 10),
-              Text('Solo OS Pro', style: TextStyle(color: AppColors.accent, fontSize: 16, fontWeight: FontWeight.w700)),
-              Spacer(),
-              Text('Active', style: TextStyle(color: AppColors.accentGreen, fontSize: 13, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ] else if (isActive) ...[
-          Row(
-            children: [
-              const Icon(Icons.timer_outlined, color: AppColors.primaryLight, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              if (isPro) ...[
+                Row(
                   children: [
-                    const Text('Free Trial', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
-                    Text('$trialDays days remaining', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    Icon(Icons.workspace_premium_outlined, color: c.accent, size: 22),
+                    const SizedBox(width: SpaceTokens.s8),
+                    Text('Solo OS Pro',
+                        style: TextStyles.bodyLg(context).copyWith(
+                            fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    AppPill(label: 'Active', variant: AppPillVariant.lime),
                   ],
                 ),
-              ),
+              ] else if (isActive) ...[
+                Row(
+                  children: [
+                    Icon(Icons.timer_outlined, size: 20, color: c.textSecondary),
+                    const SizedBox(width: SpaceTokens.s8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Free Trial',
+                              style: TextStyles.bodyMd(context)
+                                  .copyWith(fontWeight: FontWeight.w600)),
+                          Text('$trialDays days remaining',
+                              style: TextStyles.bodySm(context)
+                                  .copyWith(color: c.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: SpaceTokens.s12),
+                AppButton(
+                  label: 'Upgrade to Pro',
+                  isFullWidth: true,
+                  onPressed: () => _showUpgradeSheet(),
+                ),
+              ] else ...[
+                Text(
+                  'Your trial has ended. Upgrade to unlock all features.',
+                  style: TextStyles.bodyMd(context).copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: SpaceTokens.s12),
+                AppButton(
+                  label: 'Unlock Solo OS Pro',
+                  isFullWidth: true,
+                  onPressed: () => _showUpgradeSheet(),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _showUpgradeSheet(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text('Upgrade to Pro', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ] else ...[
-          const Text(
-            'Your trial has ended. Upgrade to unlock all features.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _showUpgradeSheet(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text('Unlock Solo OS Pro', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
+        ),
       ],
     );
   }
 
   void _showUpgradeSheet() {
+    final c = QColors.of(context);
     final pro = ProService();
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.card,
+      backgroundColor: c.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: RadiusTokens.lg),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(SpaceTokens.s24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textMuted,
-                borderRadius: BorderRadius.circular(2),
+                color: c.border,
+                borderRadius: RadiusTokens.pillAll,
               ),
             ),
-            const SizedBox(height: 20),
-            const Text('Solo OS Pro',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            const Text('Unlimited AI, unlimited ideas, unlimited growth.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-            const SizedBox(height: 24),
+            const SizedBox(height: SpaceTokens.s24),
+            Text('Solo OS Pro',
+                style: TextStyles.displayMd(context)),
+            const SizedBox(height: SpaceTokens.s8),
+            Text(
+              'Unlimited AI, unlimited ideas, unlimited growth.',
+              style: TextStyles.bodyMd(context).copyWith(color: c.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: SpaceTokens.s24),
             _PricingTile(
               title: 'Monthly',
               price: '\$9.99/mo',
               isPopular: false,
+              c: c,
               onTap: () async {
                 Navigator.pop(ctx);
                 if (pro.revenueCatReady) {
-                  _snack('Processing purchase...');
+                  _snack('Processing purchase.');
                   final ok = await pro.purchase(ProService.monthlyProductId);
                   if (ok && mounted) {
-                    _snack('Welcome to Solo OS Pro!');
+                    _snack('Welcome to Solo OS Pro.');
                     setState(() {});
                   } else if (mounted) {
                     _snack('Purchase not completed.');
                   }
                 } else {
-                  _snack('In-app purchases are being set up. Your trial continues!');
+                  _snack('In-app purchases are being set up. Your trial continues.');
                 }
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: SpaceTokens.s8),
             _PricingTile(
               title: 'Yearly',
               price: '\$79.99/yr',
               subtitle: 'Save 33%',
               isPopular: true,
+              c: c,
               onTap: () async {
                 Navigator.pop(ctx);
                 if (pro.revenueCatReady) {
-                  _snack('Processing purchase...');
+                  _snack('Processing purchase.');
                   final ok = await pro.purchase(ProService.yearlyProductId);
                   if (ok && mounted) {
-                    _snack('Welcome to Solo OS Pro!');
+                    _snack('Welcome to Solo OS Pro.');
                     setState(() {});
                   } else if (mounted) {
                     _snack('Purchase not completed.');
                   }
                 } else {
-                  _snack('In-app purchases are being set up. Your trial continues!');
+                  _snack('In-app purchases are being set up. Your trial continues.');
                 }
               },
             ),
-            const SizedBox(height: 16),
-            TextButton(
+            const SizedBox(height: SpaceTokens.s16),
+            AppButton(
+              label: 'Restore Purchases',
+              variant: AppButtonVariant.ghost,
+              isFullWidth: true,
               onPressed: () async {
                 Navigator.pop(ctx);
-                _snack('Restoring purchases...');
+                _snack('Restoring purchases.');
                 final ok = await pro.restorePurchases();
                 if (mounted) {
-                  _snack(ok ? 'Pro restored!' : 'No previous purchases found.');
+                  _snack(ok ? 'Pro restored.' : 'No previous purchases found.');
                   setState(() {});
                 }
               },
-              child: const Text('Restore Purchases',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: SpaceTokens.s8),
           ],
         ),
       ),
@@ -878,24 +772,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<bool?> _showAiDisclosure() {
     final loc = context.read<LocaleService>();
+    final c = QColors.of(context);
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        title: Text(loc.t('ai_disclosure_title'),
-            style: const TextStyle(color: AppColors.textPrimary)),
+        title: Text(loc.t('ai_disclosure_title')),
         content: Text(loc.t('ai_disclosure_body'),
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+            style: TextStyles.bodySm(context).copyWith(height: 1.5)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(loc.t('ai_disclosure_decline'),
-                style: const TextStyle(color: AppColors.textMuted)),
+                style: TextStyle(color: c.textSecondary)),
           ),
-          ElevatedButton(
+          AppButton(
+            label: loc.t('ai_disclosure_accept'),
+            size: AppButtonSize.sm,
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(loc.t('ai_disclosure_accept')),
           ),
         ],
       ),
@@ -907,106 +801,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _Section extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  const _Section({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FieldRow extends StatelessWidget {
-  final String label, saveLabel;
-  final TextEditingController controller;
-  final VoidCallback onSaved;
-  const _FieldRow({
-    required this.label,
-    required this.saveLabel,
-    required this.controller,
-    required this.onSaved,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                style: const TextStyle(color: AppColors.textPrimary),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: onSaved,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              ),
-              child: Text(saveLabel),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label, value;
-  const _InfoRow(this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-          Text(value, style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
-        ],
-      ),
-    );
-  }
-}
+// ── Pricing tile (local to settings) ───────────────────────────────────────
 
 class _PricingTile extends StatelessWidget {
   final String title, price;
   final String? subtitle;
   final bool isPopular;
+  final QColorSet c;
   final VoidCallback onTap;
 
   const _PricingTile({
@@ -1014,6 +815,7 @@ class _PricingTile extends StatelessWidget {
     required this.price,
     this.subtitle,
     required this.isPopular,
+    required this.c,
     required this.onTap,
   });
 
@@ -1021,14 +823,17 @@ class _PricingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: AnimatedContainer(
+        duration: MotionTokens.duration,
+        curve: MotionTokens.curve,
+        padding: const EdgeInsets.symmetric(
+            horizontal: SpaceTokens.s16, vertical: SpaceTokens.s16),
         decoration: BoxDecoration(
-          color: isPopular ? AppColors.primary.withOpacity(0.1) : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          color: isPopular ? c.accent.withValues(alpha: 0.08) : c.surfaceMuted,
+          borderRadius: RadiusTokens.smAll,
           border: Border.all(
-            color: isPopular ? AppColors.primary : AppColors.textMuted.withOpacity(0.3),
-            width: isPopular ? 2 : 1,
+            color: isPopular ? c.accent : c.border,
+            width: isPopular ? 1.5 : 1,
           ),
         ),
         child: Row(
@@ -1039,30 +844,26 @@ class _PricingTile extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                      Text(title,
+                          style: TextStyles.bodyMd(context)
+                              .copyWith(fontWeight: FontWeight.w600)),
                       if (isPopular) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text('BEST', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
-                        ),
+                        const SizedBox(width: SpaceTokens.s8),
+                        AppPill(label: 'BEST', variant: AppPillVariant.lime),
                       ],
                     ],
                   ),
                   if (subtitle != null)
-                    Text(subtitle!, style: const TextStyle(color: AppColors.accentGreen, fontSize: 11)),
+                    Text(subtitle!,
+                        style: TextStyles.bodySm(context)
+                            .copyWith(color: c.success)),
                 ],
               ),
             ),
-            Text(price, style: TextStyle(
-              color: isPopular ? AppColors.primary : AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            )),
+            Text(price,
+                style: TextStyles.bodyMd(context).copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: isPopular ? c.accent : c.textPrimary)),
           ],
         ),
       ),

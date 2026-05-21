@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../../theme/app_theme.dart';
+import '../../../../theme/app_colors.dart';
+import '../../../../theme/tokens.dart';
+import '../../../../theme/text_styles.dart';
+import '../../../../theme/atoms/section_label.dart';
+import '../../../../theme/atoms/app_card.dart';
+import '../../../../theme/atoms/app_pill.dart';
+import '../../../../theme/atoms/mono_text.dart';
 import '../../../../services/api_service.dart';
 
 /// The founder's command center.
@@ -26,34 +32,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _loadDashboard() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await ApiService.directRequest('GET', '/api/admin/dashboard');
-      setState(() { _data = Map<String, dynamic>.from(data); _loading = false; });
+      setState(() {
+        _data = Map<String, dynamic>.from(data);
+        _loading = false;
+      });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
   Future<void> _loadUsers() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final data = await ApiService.directRequest('GET', '/api/admin/users?limit=100');
+      final data =
+          await ApiService.directRequest('GET', '/api/admin/users?limit=100');
       setState(() {
         _users = List.from(data['users'] ?? []);
         _loading = false;
       });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Command Center'),
+        title: Text('Command Center', style: TextStyles.displayMd(context)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -77,19 +99,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: c.accent))
           : _error != null
               ? Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(SpaceTokens.s24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline, color: AppColors.accentRed, size: 48),
-                        const SizedBox(height: 16),
-                        Text(_error!, style: const TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        ElevatedButton(onPressed: _loadDashboard, child: const Text('Retry')),
+                        Icon(Icons.error_outline,
+                            color: c.danger, size: 40),
+                        const SizedBox(height: SpaceTokens.s16),
+                        Text(_error!,
+                            style: TextStyles.bodyMd(context)
+                                .copyWith(color: c.textSecondary),
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: SpaceTokens.s16),
+                        TextButton(
+                          onPressed: _loadDashboard,
+                          child: const Text('Retry'),
+                        ),
                       ],
                     ),
                   ),
@@ -112,36 +142,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return RefreshIndicator(
       onRefresh: _loadDashboard,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(SpaceTokens.s16),
         children: [
           // ── Users ──
-          _SectionHeader('USERS'),
+          SectionLabel('Users'),
           Row(
             children: [
-              _MetricCard('Total', '${users['total'] ?? 0}', Icons.people_rounded, AppColors.primary),
-              const SizedBox(width: 8),
-              _MetricCard('DAU', '${users['dau'] ?? 0}', Icons.today_rounded, AppColors.accentGreen),
-              const SizedBox(width: 8),
-              _MetricCard('WAU', '${users['wau'] ?? 0}', Icons.date_range_rounded, AppColors.accentBlue),
-              const SizedBox(width: 8),
-              _MetricCard('MAU', '${users['mau'] ?? 0}', Icons.calendar_month_rounded, AppColors.accent),
+              _MetricCard('Total', '${users['total'] ?? 0}',
+                  Icons.people_outline_rounded),
+              const SizedBox(width: SpaceTokens.s8),
+              _MetricCard('DAU', '${users['dau'] ?? 0}',
+                  Icons.today_rounded),
+              const SizedBox(width: SpaceTokens.s8),
+              _MetricCard('WAU', '${users['wau'] ?? 0}',
+                  Icons.date_range_rounded),
+              const SizedBox(width: SpaceTokens.s8),
+              _MetricCard('MAU', '${users['mau'] ?? 0}',
+                  Icons.calendar_month_rounded),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: SpaceTokens.s8),
           Row(
             children: [
-              _MetricCard('This Week', '+${users['this_week'] ?? 0}', Icons.trending_up_rounded, AppColors.accentGreen),
-              const SizedBox(width: 8),
-              _MetricCard('This Month', '+${users['this_month'] ?? 0}', Icons.show_chart_rounded, AppColors.primaryLight),
+              _MetricCard('This Week', '+${users['this_week'] ?? 0}',
+                  Icons.trending_up_rounded),
+              const SizedBox(width: SpaceTokens.s8),
+              _MetricCard('This Month', '+${users['this_month'] ?? 0}',
+                  Icons.show_chart_rounded),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: SpaceTokens.s24),
 
           // ── Content ──
-          _SectionHeader('CONTENT'),
+          SectionLabel('Content'),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: SpaceTokens.s8,
+            runSpacing: SpaceTokens.s8,
             children: [
               _SmallMetric('Projects', '${content['projects'] ?? 0}'),
               _SmallMetric('Tasks', '${tasks['total'] ?? 0} (${tasks['completed'] ?? 0} done)'),
@@ -154,108 +190,108 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               _SmallMetric('Circles', '${content['circles'] ?? 0}'),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: SpaceTokens.s24),
 
           // ── Analytics ──
-          _SectionHeader('ANALYTICS'),
+          SectionLabel('Analytics'),
           Row(
             children: [
-              _MetricCard('Today', '${analytics['events_today'] ?? 0}', Icons.bolt_rounded, AppColors.accent),
-              const SizedBox(width: 8),
-              _MetricCard('This Week', '${analytics['events_this_week'] ?? 0}', Icons.analytics_rounded, AppColors.primary),
+              _MetricCard('Today', '${analytics['events_today'] ?? 0}',
+                  Icons.bolt_rounded),
+              const SizedBox(width: SpaceTokens.s8),
+              _MetricCard('This Week', '${analytics['events_this_week'] ?? 0}',
+                  Icons.analytics_rounded),
             ],
           ),
           if (topEvents.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(12),
-              ),
+            const SizedBox(height: SpaceTokens.s12),
+            AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Top Events (7d)', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
+                  SectionLabel('Top Events (7d)',
+                      bottomPadding: SpaceTokens.s8),
                   ...topEvents.take(10).map((e) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${e['event']}',
-                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                          ),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: SpaceTokens.s4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text('${e['event']}',
+                                  style: TextStyles.bodyMd(context)),
+                            ),
+                            MonoText('${e['count']}',
+                                weight: FontWeight.w700),
+                          ],
                         ),
-                        Text(
-                          '${e['count']}',
-                          style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  )),
+                      )),
                 ],
               ),
             ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: SpaceTokens.s24),
 
           // ── Recent Signups ──
           if (recentSignups.isNotEmpty) ...[
-            _SectionHeader('RECENT SIGNUPS'),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(12),
-              ),
+            SectionLabel('Recent Signups'),
+            AppCard(
+              padding: EdgeInsets.zero,
               child: Column(
-                children: recentSignups.map<Widget>((u) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: (u['onboarded'] ?? false) ? AppColors.accentGreen : AppColors.textMuted,
-                        child: Text(
-                          (u['name'] ?? u['email'] ?? '?').toString().substring(0, 1).toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (u['name']?.toString().isNotEmpty ?? false) ? u['name'] : u['email'] ?? '',
-                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              _timeAgo(u['joined']),
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (u['onboarded'] == true)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentGreen.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(4),
+                children: recentSignups.map<Widget>((entry) {
+                  final u = entry as Map<String, dynamic>;
+                  final onboarded = u['onboarded'] == true;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: SpaceTokens.s16,
+                        vertical: SpaceTokens.s12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: onboarded
+                              ? QColors.of(context).success.withValues(alpha: 0.15)
+                              : QColors.of(context).surfaceMuted,
+                          child: Text(
+                            (u['name'] ?? u['email'] ?? '?')
+                                .toString()
+                                .substring(0, 1)
+                                .toUpperCase(),
+                            style: TextStyles.bodySm(context)
+                                .copyWith(fontWeight: FontWeight.w700),
                           ),
-                          child: const Text('Onboarded', style: TextStyle(color: AppColors.accentGreen, fontSize: 9, fontWeight: FontWeight.w600)),
                         ),
-                    ],
-                  ),
-                )).toList(),
+                        const SizedBox(width: SpaceTokens.s8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                (u['name']?.toString().isNotEmpty ?? false)
+                                    ? u['name']
+                                    : u['email'] ?? '',
+                                style: TextStyles.bodyMd(context),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                _timeAgo(u['joined']),
+                                style: TextStyles.bodySm(context).copyWith(
+                                    color: QColors.of(context).textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (onboarded)
+                          AppPill(
+                              label: 'Onboarded',
+                              variant: AppPillVariant.success),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
             ),
           ],
-          const SizedBox(height: 32),
+          const SizedBox(height: SpaceTokens.s32),
         ],
       ),
     );
@@ -267,101 +303,102 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return RefreshIndicator(
       onRefresh: _loadUsers,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(SpaceTokens.s16),
         itemCount: _users!.length,
         itemBuilder: (context, i) {
+          final c = QColors.of(context);
           final u = _users![i] as Map<String, dynamic>;
           final counts = u['counts'] as Map<String, dynamic>? ?? {};
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.primary,
-                      child: Text(
-                        (u['name']?.toString().isNotEmpty ?? false)
-                            ? u['name'].toString().substring(0, 1).toUpperCase()
-                            : (u['email'] ?? '?').toString().substring(0, 1).toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: SpaceTokens.s8),
+            child: AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: c.surfaceMuted,
+                        child: Text(
+                          (u['name']?.toString().isNotEmpty ?? false)
+                              ? u['name'].toString().substring(0, 1).toUpperCase()
+                              : (u['email'] ?? '?')
+                                  .toString()
+                                  .substring(0, 1)
+                                  .toUpperCase(),
+                          style: TextStyles.bodySm(context)
+                              .copyWith(fontWeight: FontWeight.w700),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(width: SpaceTokens.s8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (u['name']?.toString().isNotEmpty ?? false)
+                                  ? u['name']
+                                  : u['email'] ?? '',
+                              style: TextStyles.bodyMd(context)
+                                  .copyWith(fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(u['email'] ?? '',
+                                style: TextStyles.bodySm(context)
+                                    .copyWith(color: c.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            (u['name']?.toString().isNotEmpty ?? false) ? u['name'] : u['email'] ?? '',
-                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(u['email'] ?? '', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                          MonoText('Lv.${u['level'] ?? 1}',
+                              weight: FontWeight.w700, color: c.accent),
+                          MonoText('${u['xp'] ?? 0} XP',
+                              size: 10, color: c.textSecondary),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('Lv.${u['level'] ?? 1}', style: const TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w700)),
-                        Text('${u['xp'] ?? 0} XP', style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    _CountChip('Projects', counts['projects']),
-                    _CountChip('Tasks', counts['tasks']),
-                    _CountChip('Habits', counts['habits']),
-                    _CountChip('Ideas', counts['ideas']),
-                    _CountChip('Standups', counts['standupLogs']),
-                    _CountChip('Events', counts['analyticsEvents']),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Text(
-                      'Joined ${_timeAgo(u['joined'])}',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                    ),
-                    const Spacer(),
-                    if (u['is_admin'] == true)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text('Admin', style: TextStyle(color: AppColors.accent, fontSize: 9, fontWeight: FontWeight.w600)),
-                      ),
-                    if (u['onboarded'] == true) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentGreen.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text('Onboarded', style: TextStyle(color: AppColors.accentGreen, fontSize: 9, fontWeight: FontWeight.w600)),
-                      ),
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: SpaceTokens.s8),
+                  Wrap(
+                    spacing: SpaceTokens.s4,
+                    runSpacing: SpaceTokens.s4,
+                    children: [
+                      _CountChip('Projects', counts['projects']),
+                      _CountChip('Tasks', counts['tasks']),
+                      _CountChip('Habits', counts['habits']),
+                      _CountChip('Ideas', counts['ideas']),
+                      _CountChip('Standups', counts['standupLogs']),
+                      _CountChip('Events', counts['analyticsEvents']),
+                    ],
+                  ),
+                  const SizedBox(height: SpaceTokens.s4),
+                  Row(
+                    children: [
+                      Text(
+                        'Joined ${_timeAgo(u['joined'])}',
+                        style: TextStyles.bodySm(context)
+                            .copyWith(color: c.textSecondary),
+                      ),
+                      const Spacer(),
+                      if (u['is_admin'] == true)
+                        Padding(
+                          padding: const EdgeInsets.only(right: SpaceTokens.s4),
+                          child: AppPill(
+                              label: 'Admin',
+                              variant: AppPillVariant.warn),
+                        ),
+                      if (u['onboarded'] == true)
+                        AppPill(
+                            label: 'Onboarded',
+                            variant: AppPillVariant.success),
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -391,15 +428,16 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: SpaceTokens.s12),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: selected ? AppColors.primary : Colors.transparent,
+                color: selected ? c.accent : Colors.transparent,
                 width: 2,
               ),
             ),
@@ -407,33 +445,11 @@ class _TabButton extends StatelessWidget {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: selected ? AppColors.primary : AppColors.textMuted,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 14,
+            style: TextStyles.bodyMd(context).copyWith(
+              color: selected ? c.textPrimary : c.textSecondary,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.textMuted,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
         ),
       ),
     );
@@ -443,26 +459,24 @@ class _SectionHeader extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   final String label, value;
   final IconData icon;
-  final Color color;
-  const _MetricCard(this.label, this.value, this.icon, this.color);
+  const _MetricCard(this.label, this.value, this.icon);
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-        ),
+      child: AppCard(
+        dense: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 8),
-            Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w800)),
+            Icon(icon, color: c.textSecondary, size: 16),
+            const SizedBox(height: SpaceTokens.s4),
+            MonoText(value, size: 20, weight: FontWeight.w700),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+            Text(label,
+                style: TextStyles.bodySm(context)
+                    .copyWith(color: c.textSecondary, fontSize: 10)),
           ],
         ),
       ),
@@ -476,16 +490,22 @@ class _SmallMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+          horizontal: SpaceTokens.s8, vertical: SpaceTokens.s4),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
+        color: c.surfaceMuted,
+        borderRadius: RadiusTokens.smAll,
+        border: Border.all(color: c.border),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
-          Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+          MonoText(value, size: 13, weight: FontWeight.w600),
+          Text(label,
+              style: TextStyles.bodySm(context)
+                  .copyWith(color: c.textSecondary, fontSize: 10)),
         ],
       ),
     );
@@ -499,15 +519,18 @@ class _CountChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+          horizontal: SpaceTokens.s8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(6),
+        color: c.surfaceMuted,
+        borderRadius: RadiusTokens.smAll,
       ),
       child: Text(
         '$label: ${count ?? 0}',
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+        style: TextStyles.bodySm(context)
+            .copyWith(color: c.textSecondary, fontSize: 10),
       ),
     );
   }

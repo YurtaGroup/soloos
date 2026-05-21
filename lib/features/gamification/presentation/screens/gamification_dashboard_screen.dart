@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../theme/app_theme.dart';
+import '../../../../theme/app_colors.dart';
+import '../../../../theme/tokens.dart';
+import '../../../../theme/text_styles.dart';
+import '../../../../theme/atoms/section_label.dart';
+import '../../../../theme/atoms/app_card.dart';
 import '../viewmodels/gamification_viewmodel.dart';
 import '../widgets/daily_score_card.dart';
 import '../widgets/xp_progress_card.dart';
@@ -29,15 +33,16 @@ class _GamificationDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     final vm = context.watch<GamificationViewModel>();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          _buildHeader(vm),
+          _buildHeader(context, vm, c),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+            padding: const EdgeInsets.fromLTRB(
+                SpaceTokens.s16, 0, SpaceTokens.s16, 100),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Score ring
@@ -45,53 +50,55 @@ class _GamificationDashboardScreenState
                   score: vm.todayScoreValue,
                   xpEarned: vm.todayScore?.xpEarned ?? 0,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: SpaceTokens.s12),
 
                 // XP / Level
                 XpProgressCard(progress: vm.progress),
-                const SizedBox(height: 20),
+                const SizedBox(height: SpaceTokens.s24),
 
                 // Coach suggestions
                 if (vm.coachSuggestions.isNotEmpty) ...[
-                  _sectionHeader('🧠 Coach'),
-                  const SizedBox(height: 8),
+                  SectionLabel('Coach'),
                   ...vm.coachSuggestions.map((s) => AiCoachCard(
                         suggestion: s,
-                        onDismiss: () =>
-                            vm.dismissCoachSuggestion(s.id),
+                        onDismiss: () => vm.dismissCoachSuggestion(s.id),
                       )),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: SpaceTokens.s12),
                 ],
 
                 // Daily missions
-                _sectionHeader(
-                  '🎯 Daily Missions',
-                  trailing:
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SectionLabel('Daily Missions', bottomPadding: 0),
+                    Text(
                       '${vm.missionsCompletedCount}/${vm.totalMissionsCount}',
+                      style: TextStyles.bodySm(context)
+                          .copyWith(color: c.textSecondary),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: SpaceTokens.s8),
                 DailyMissionsCard(
                   missions: vm.todayMissions,
                   onComplete: vm.completeMissionManually,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: SpaceTokens.s24),
 
                 // Streaks
-                _sectionHeader('🔥 Streaks'),
-                const SizedBox(height: 8),
+                SectionLabel('Streaks'),
                 StreaksCard(activeStreaks: vm.activeStreaks),
-                const SizedBox(height: 20),
+                const SizedBox(height: SpaceTokens.s24),
 
                 // Category breakdown
-                _sectionHeader('📊 Category Scores'),
-                const SizedBox(height: 8),
+                SectionLabel('Category Scores'),
                 if (vm.todayScore != null)
                   CategoryProgressList(
                     categoryScores: vm.todayScore!.categoryScores,
                   )
                 else
                   _EmptyCategories(),
-                const SizedBox(height: 40),
+                const SizedBox(height: SpaceTokens.s32),
               ]),
             ),
           ),
@@ -100,52 +107,20 @@ class _GamificationDashboardScreenState
     );
   }
 
-  Widget _buildHeader(GamificationViewModel vm) {
+  Widget _buildHeader(BuildContext context, GamificationViewModel vm, QColorSet c) {
     return SliverAppBar(
-      backgroundColor: AppColors.background,
       floating: true,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '⚡ Progress',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text('Progress', style: TextStyles.displayMd(context)),
           Text(
             'Level ${vm.progress.level} · ${vm.progress.levelTitle}',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyles.bodySm(context)
+                .copyWith(color: c.textSecondary),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _sectionHeader(String title, {String? trailing}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-        if (trailing != null)
-          Text(
-            trailing,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-          ),
-      ],
     );
   }
 }
@@ -153,15 +128,11 @@ class _GamificationDashboardScreenState
 class _EmptyCategories extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Text(
+    final c = QColors.of(context);
+    return AppCard(
+      child: Text(
         'Complete actions across modules to see category scores.',
-        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+        style: TextStyles.bodyMd(context).copyWith(color: c.textSecondary),
       ),
     );
   }

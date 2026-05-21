@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../theme/app_theme.dart';
+import '../../../../theme/app_colors.dart';
+import '../../../../theme/tokens.dart';
+import '../../../../theme/text_styles.dart';
+import '../../../../theme/atoms/section_label.dart';
+import '../../../../theme/atoms/app_card.dart';
+import '../../../../theme/atoms/mono_text.dart';
 import '../../domain/models/family_person.dart';
 import '../../domain/models/family_reminder.dart';
 import '../viewmodels/family_viewmodel.dart';
@@ -14,36 +19,43 @@ class FamilyDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     final vm = context.watch<FamilyViewModel>();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton(
         heroTag: 'family_fab',
         onPressed: () => _openAddPerson(context),
+        backgroundColor: c.primaryButton,
+        foregroundColor: c.primaryButtonLabel,
+        elevation: 0,
         child: const Icon(Icons.person_add_outlined),
       ),
       body: CustomScrollView(
         slivers: [
-          _buildHeader(context, vm),
+          _buildHeader(context, vm, c),
           if (vm.peopleNeedingAttention.isNotEmpty)
             _sectionSliver(
-              title: '🔴 Needs Attention',
+              context: context,
+              title: 'Needs Attention',
               trailing: '${vm.peopleNeedingAttention.length}',
               child: _AttentionList(vm: vm),
             ),
           if (vm.suggestions.isNotEmpty)
             _sectionSliver(
-              title: '💡 Today\'s Suggestions',
+              context: context,
+              title: "Today's Suggestions",
               child: _SuggestionsList(vm: vm),
             ),
           if (vm.upcomingReminders.isNotEmpty || vm.overdueReminders.isNotEmpty)
             _sectionSliver(
-              title: '⏰ Reminders',
+              context: context,
+              title: 'Reminders',
               child: _RemindersList(vm: vm),
             ),
           _sectionSliver(
-            title: '👥 Everyone',
+            context: context,
+            title: 'Everyone',
             trailing: '${vm.totalPeople}',
             child: _AllPeopleList(vm: vm),
           ),
@@ -54,33 +66,28 @@ class FamilyDashboardScreen extends StatelessWidget {
   }
 
   SliverToBoxAdapter _sectionSliver({
+    required BuildContext context,
     required String title,
     String? trailing,
     required Widget child,
   }) {
+    final c = QColors.of(context);
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+        padding: const EdgeInsets.fromLTRB(
+            SpaceTokens.s16, SpaceTokens.s24, SpaceTokens.s16, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    )),
+                SectionLabel(title, bottomPadding: 0),
                 if (trailing != null)
-                  Text(trailing,
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 12)),
+                  MonoText(trailing, size: 11, color: c.textSecondary),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: SpaceTokens.s8),
             child,
           ],
         ),
@@ -88,62 +95,45 @@ class FamilyDashboardScreen extends StatelessWidget {
     );
   }
 
-  SliverToBoxAdapter _buildHeader(BuildContext context, FamilyViewModel vm) {
+  SliverToBoxAdapter _buildHeader(
+      BuildContext context, FamilyViewModel vm, QColorSet c) {
     return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1530), Color(0xFF0F0A20)],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: const Color(0xFFEC4899).withOpacity(0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('❤️ Family',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-            const SizedBox(height: 12),
-            Text(
-              '${vm.totalPeople} people',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            SpaceTokens.s16, SpaceTokens.s16, SpaceTokens.s16, 0),
+        child: AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionLabel('Family', bottomPadding: SpaceTokens.s8),
+              Text(
+                '${vm.totalPeople} people',
+                style: TextStyles.displayMd(context),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _HeaderChip(
-                  label: 'Need attention',
-                  value: '${vm.overdueContactCount}',
-                  color: vm.overdueContactCount > 0
-                      ? AppColors.accentRed
-                      : AppColors.accentGreen,
-                ),
-                const SizedBox(width: 8),
-                _HeaderChip(
-                  label: 'Due today',
-                  value: '${vm.dueTodayCount}',
-                  color: vm.dueTodayCount > 0
-                      ? AppColors.accent
-                      : AppColors.accentGreen,
-                ),
-                const SizedBox(width: 8),
-                _HeaderChip(
-                  label: 'Birthdays soon',
-                  value: '${vm.upcomingBirthdays.length}',
-                  color: AppColors.primaryLight,
-                ),
-              ],
-            ),
-          ],
+              const SizedBox(height: SpaceTokens.s16),
+              Row(
+                children: [
+                  _HeaderChip(
+                    label: 'Need attention',
+                    value: '${vm.overdueContactCount}',
+                    color: vm.overdueContactCount > 0 ? c.danger : c.success,
+                  ),
+                  const SizedBox(width: SpaceTokens.s8),
+                  _HeaderChip(
+                    label: 'Due today',
+                    value: '${vm.dueTodayCount}',
+                    color: vm.dueTodayCount > 0 ? c.warn : c.success,
+                  ),
+                  const SizedBox(width: SpaceTokens.s8),
+                  _HeaderChip(
+                    label: 'Birthdays soon',
+                    value: '${vm.upcomingBirthdays.length}',
+                    color: c.textSecondary,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -166,21 +156,21 @@ class _HeaderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(SpaceTokens.s8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
+          color: color.withValues(alpha: 0.08),
+          borderRadius: RadiusTokens.smAll,
         ),
         child: Column(
           children: [
-            Text(value,
-                style: TextStyle(
-                    color: color, fontWeight: FontWeight.w700, fontSize: 18)),
+            MonoText(value,
+                size: 18, weight: FontWeight.w700, color: color),
             Text(label,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 9),
+                style: TextStyles.bodySm(context)
+                    .copyWith(color: c.textSecondary, fontSize: 9),
                 textAlign: TextAlign.center),
           ],
         ),
@@ -247,7 +237,8 @@ class _RemindersList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final overdue = vm.overdueReminders;
-    final upcoming = vm.upcomingReminders.where((r) => !r.isOverdue).take(5).toList();
+    final upcoming =
+        vm.upcomingReminders.where((r) => !r.isOverdue).take(5).toList();
 
     return Column(
       children: [
@@ -279,49 +270,52 @@ class _ReminderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isOverdue ? AppColors.accentRed : AppColors.textSecondary;
+    final c = QColors.of(context);
+    final color = isOverdue ? c.danger : c.textSecondary;
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.only(bottom: SpaceTokens.s4),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-        border: isOverdue
-            ? Border.all(color: AppColors.accentRed.withOpacity(0.3))
-            : null,
+        border: Border.all(
+            color: isOverdue ? c.danger.withValues(alpha: 0.3) : c.border),
+        borderRadius: RadiusTokens.smAll,
       ),
       child: Row(
         children: [
-          Text(reminder.reminderType.emoji,
-              style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 10),
+          // Reminder emoji is user data — preserve
+          Padding(
+            padding: const EdgeInsets.all(SpaceTokens.s12),
+            child: Text(reminder.reminderType.emoji,
+                style: const TextStyle(fontSize: 16)),
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(reminder.title,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary, fontSize: 13)),
+                    style: TextStyles.bodyMd(context)),
                 Text(
                   isOverdue ? 'Overdue' : _dueLabel(reminder.dueAt),
-                  style: TextStyle(color: color, fontSize: 11),
+                  style: TextStyles.bodySm(context).copyWith(color: color),
                 ),
               ],
             ),
           ),
           GestureDetector(
             onTap: onComplete,
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: AppColors.accentGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppColors.accentGreen.withOpacity(0.4)),
+            child: Padding(
+              padding: const EdgeInsets.all(SpaceTokens.s12),
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: c.success.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: c.success.withValues(alpha: 0.4)),
+                ),
+                child:
+                    Icon(Icons.check, size: 14, color: c.success),
               ),
-              child: const Icon(Icons.check,
-                  size: 16, color: AppColors.accentGreen),
             ),
           ),
         ],
@@ -343,26 +337,18 @@ class _AllPeopleList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = QColors.of(context);
     if (vm.people.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      return AppCard(
         child: Column(
           children: [
-            const Text('❤️', style: TextStyle(fontSize: 32)),
-            const SizedBox(height: 8),
-            const Text('Add people who matter',
-                style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            const Text(
-              'Track relationships, birthdays, and\nstay present with the people you love.',
-              style: TextStyle(
-                  color: AppColors.textSecondary, fontSize: 12),
+            Text('Add people who matter',
+                style: TextStyles.bodyMd(context)
+                    .copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: SpaceTokens.s4),
+            Text(
+              'Track relationships, birthdays, and stay present with the people you love.',
+              style: TextStyles.bodySm(context).copyWith(color: c.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],

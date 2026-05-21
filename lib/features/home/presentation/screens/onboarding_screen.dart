@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../theme/app_theme.dart';
+import '../../../../theme/tokens.dart';
+import '../../../../theme/text_styles.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/pro_service.dart';
 import '../../../../services/claude_service.dart';
@@ -61,20 +62,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     // Show AI disclosure and get consent before first AI call
     if (!_storage.aiConsentGiven && mounted) {
+      final ls = context.read<LocaleService>();
       final accepted = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.card,
-          title: Text(ls.t('ai_disclosure_title'),
-              style: const TextStyle(color: AppColors.textPrimary)),
+          title: Text(ls.t('ai_disclosure_title')),
           content: Text(ls.t('ai_disclosure_body'),
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+              style: const TextStyle(height: 1.5)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ls.t('ai_disclosure_decline'),
-                  style: const TextStyle(color: AppColors.textMuted)),
+              child: Text(ls.t('ai_disclosure_decline')),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
@@ -97,7 +96,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       _applyAiSetup(raw, name, business, challenge, habit);
     } catch (_) {
-      // AI failed — use answers directly as fallback
       _applyFallbackSetup(name, business, challenge, habit);
     }
 
@@ -125,10 +123,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _applyAiSetup(String raw, String name, String business, String challenge, String habit) {
     try {
-      // Strip markdown code fences if present
       var cleaned = raw.trim();
       if (cleaned.startsWith('```')) {
-        cleaned = cleaned.replaceFirst(RegExp(r'^```\w*\n?'), '').replaceFirst(RegExp(r'\n?```$'), '');
+        cleaned = cleaned
+            .replaceFirst(RegExp(r'^```\w*\n?'), '')
+            .replaceFirst(RegExp(r'\n?```$'), '');
       }
       final data = jsonDecode(cleaned) as Map<String, dynamic>;
 
@@ -136,10 +135,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final tasks = (data['project_tasks'] as List?)?.cast<String>() ?? [];
       final priorities = (data['task_priorities'] as List?)?.cast<String>() ?? [];
       final habitName = data['habit_name'] as String? ?? habit;
-      final habitEmoji = data['habit_emoji'] as String? ?? '🎯';
+      final habitEmoji = data['habit_emoji'] as String? ?? '';
       final digest = data['digest'] as String? ?? '';
 
-      // Create personalized project at the front of the list
       final now = DateTime.now();
       final existingProjects = _storage.getProjects();
       final newProject = Project(
@@ -156,7 +154,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       _storage.saveProjects([newProject, ...existingProjects]);
 
-      // Add personalized habit at the front
       final existingHabits = _storage.getHabits();
       final newHabit = Habit(
         id: _uuid.v4(),
@@ -165,13 +162,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       _storage.saveHabits([newHabit, ...existingHabits]);
 
-      // Set AI digest with personalized content
       if (digest.isNotEmpty) {
         _storage.setLastAiDigest(digest);
         _storage.setLastDigestDate(now.toIso8601String());
       }
 
-      // Save first standup from challenge
       final existingLogs = _storage.getStandupLogs();
       existingLogs.insert(0, StandupLog(
         id: _uuid.v4(),
@@ -189,7 +184,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _applyFallbackSetup(String name, String business, String challenge, String habit) {
     final now = DateTime.now();
 
-    // Create project from business answer
     final existingProjects = _storage.getProjects();
     final newProject = Project(
       id: _uuid.v4(),
@@ -204,12 +198,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
     _storage.saveProjects([newProject, ...existingProjects]);
 
-    // Create habit
     final existingHabits = _storage.getHabits();
-    final newHabit = Habit(id: _uuid.v4(), name: habit, emoji: '🎯');
+    final newHabit = Habit(id: _uuid.v4(), name: habit, emoji: '');
     _storage.saveHabits([newHabit, ...existingHabits]);
 
-    // Create standup
     final existingLogs = _storage.getStandupLogs();
     existingLogs.insert(0, StandupLog(
       id: _uuid.v4(),
@@ -225,7 +217,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final loc = context.read<LocaleService>();
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      // Onboarding is intentionally dark — photo-scrim pattern, not app chrome
+      backgroundColor: ColorTokens.night950,
       body: Stack(
         children: [
           PageView(
@@ -237,7 +230,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               _IntroPage(
                 title: loc.t('ob_hook_title'),
                 subtitle: loc.t('ob_hook_sub'),
-                gradient: const [Color(0xFF0F172A), Color(0xFF1E40AF)],
                 onNext: _next,
                 buttonText: loc.t('continue_btn'),
               ),
@@ -245,7 +237,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               _IntroPage(
                 title: loc.t('ob_promise_title'),
                 subtitle: loc.t('ob_promise_sub'),
-                gradient: const [Color(0xFF581C87), Color(0xFFBE185D)],
                 onNext: _next,
                 buttonText: loc.t('ob_show_me'),
               ),
@@ -254,7 +245,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 question: loc.t('ob_setup_title'),
                 hint: loc.t('name_hint'),
                 controller: _nameController,
-                gradient: const [Color(0xFF065F46), Color(0xFF0F172A)],
                 onNext: () => _nextIfFilled(_nameController),
                 buttonText: loc.t('continue_btn'),
                 autoCapitalize: TextCapitalization.words,
@@ -264,7 +254,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 question: loc.t('ob_q_business'),
                 hint: loc.t('ob_q_business_hint'),
                 controller: _businessController,
-                gradient: const [Color(0xFF1E3A5F), Color(0xFF0F172A)],
                 onNext: () => _nextIfFilled(_businessController),
                 buttonText: loc.t('continue_btn'),
                 autoCapitalize: TextCapitalization.sentences,
@@ -274,7 +263,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 question: loc.t('ob_q_challenge'),
                 hint: loc.t('ob_q_challenge_hint'),
                 controller: _challengeController,
-                gradient: const [Color(0xFF78350F), Color(0xFF0F172A)],
                 onNext: () => _nextIfFilled(_challengeController),
                 buttonText: loc.t('continue_btn'),
                 autoCapitalize: TextCapitalization.sentences,
@@ -308,9 +296,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   height: 6,
                   decoration: BoxDecoration(
                     color: _currentPage == i
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(3),
+                        ? ColorTokens.lime500
+                        : ColorTokens.ink500.withValues(alpha: 0.4),
+                    borderRadius: RadiusTokens.pillAll,
                   ),
                 )),
               ),
@@ -321,17 +309,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-// ─── Intro page (hook & promise) ────────────────────────────────
+// ─── Intro page (hook & promise) ────────────────────────────────────────────
 
 class _IntroPage extends StatelessWidget {
   final String title, subtitle, buttonText;
-  final List<Color> gradient;
   final VoidCallback onNext;
 
   const _IntroPage({
     required this.title,
     required this.subtitle,
-    required this.gradient,
     required this.onNext,
     required this.buttonText,
   });
@@ -339,42 +325,34 @@ class _IntroPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
-      ),
+      color: ColorTokens.night950,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: SpaceTokens.s32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(flex: 3),
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 38,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                  letterSpacing: -0.5,
+                style: TextStyles.displayLg(context).copyWith(
+                  color: ColorTokens.ink100,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: SpaceTokens.s16),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 17,
+                style: TextStyles.bodyLg(context).copyWith(
+                  color: ColorTokens.ink500,
                   height: 1.6,
                 ),
               ),
               const Spacer(flex: 4),
-              _WhiteButton(text: buttonText, onPressed: onNext),
-              const SizedBox(height: 48),
+              _OnboardingCTA(text: buttonText, onPressed: onNext),
+              const SizedBox(height: SpaceTokens.s48),
             ],
           ),
         ),
@@ -383,12 +361,11 @@ class _IntroPage extends StatelessWidget {
   }
 }
 
-// ─── Single-question page ───────────────────────────────────────
+// ─── Single-question page ─────────────────────────────────────────────────────
 
 class _QuestionPage extends StatelessWidget {
   final String question, hint, buttonText;
   final TextEditingController controller;
-  final List<Color> gradient;
   final VoidCallback onNext;
   final TextCapitalization autoCapitalize;
 
@@ -396,7 +373,6 @@ class _QuestionPage extends StatelessWidget {
     required this.question,
     required this.hint,
     required this.controller,
-    required this.gradient,
     required this.onNext,
     required this.buttonText,
     this.autoCapitalize = TextCapitalization.none,
@@ -405,52 +381,56 @@ class _QuestionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: gradient,
-        ),
-      ),
+      color: ColorTokens.night950,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: SpaceTokens.s32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(flex: 2),
               Text(
                 question,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                  letterSpacing: -0.5,
+                style: TextStyles.displayLg(context).copyWith(
+                  color: ColorTokens.ink100,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: SpaceTokens.s24),
               TextField(
                 controller: controller,
-                style: const TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyles.bodyLg(context).copyWith(
+                    color: ColorTokens.ink100),
                 decoration: InputDecoration(
                   hintText: hint,
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                  hintStyle: TextStyles.bodyLg(context).copyWith(
+                      color: ColorTokens.ink700),
                   filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.1),
+                  fillColor: ColorTokens.night900,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: SpaceTokens.s16, vertical: SpaceTokens.s16),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+                    borderRadius: RadiusTokens.smAll,
+                    borderSide: BorderSide(color: ColorTokens.night800),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: RadiusTokens.smAll,
+                    borderSide: BorderSide(color: ColorTokens.night800),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: RadiusTokens.smAll,
+                    borderSide: BorderSide(color: ColorTokens.lime500, width: 1.5),
+                  ),
                 ),
                 textCapitalization: autoCapitalize,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => onNext(),
               ),
               const Spacer(flex: 3),
-              _WhiteButton(text: buttonText, onPressed: onNext),
-              const SizedBox(height: 48),
+              _OnboardingCTA(text: buttonText, onPressed: onNext),
+              const SizedBox(height: SpaceTokens.s48),
             ],
           ),
         ),
@@ -459,7 +439,7 @@ class _QuestionPage extends StatelessWidget {
   }
 }
 
-// ─── Final page (habit + CTA + loading) ─────────────────────────
+// ─── Final page (habit + CTA + loading) ─────────────────────────────────────
 
 class _FinalPage extends StatelessWidget {
   final String question, hint, trialText, noCardText, ctaText, loadingText;
@@ -482,19 +462,11 @@ class _FinalPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF4C1D95), Color(0xFF0F172A)],
-        ),
-      ),
+      color: ColorTokens.night950,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: isLoading
-              ? _buildLoading(context)
-              : _buildForm(context),
+          padding: const EdgeInsets.symmetric(horizontal: SpaceTokens.s32),
+          child: isLoading ? _buildLoading(context) : _buildForm(context),
         ),
       ),
     );
@@ -505,20 +477,19 @@ class _FinalPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const SizedBox(
-          width: 48, height: 48,
+          width: 40,
+          height: 40,
           child: CircularProgressIndicator(
-            strokeWidth: 3,
-            color: Colors.white,
+            strokeWidth: 2,
+            color: ColorTokens.lime500,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: SpaceTokens.s24),
         Text(
           loadingText,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+          style: TextStyles.bodyLg(context).copyWith(
+            color: ColorTokens.ink500,
           ),
         ),
       ],
@@ -532,112 +503,116 @@ class _FinalPage extends StatelessWidget {
         const Spacer(flex: 2),
         Text(
           question,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 34,
-            fontWeight: FontWeight.w800,
-            height: 1.1,
-            letterSpacing: -0.5,
+          style: TextStyles.displayLg(context).copyWith(
+            color: ColorTokens.ink100,
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+            height: 1.2,
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: SpaceTokens.s24),
         TextField(
           controller: controller,
-          style: const TextStyle(color: Colors.white, fontSize: 18),
+          style: TextStyles.bodyLg(context).copyWith(color: ColorTokens.ink100),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+            hintStyle:
+                TextStyles.bodyLg(context).copyWith(color: ColorTokens.ink700),
             filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.1),
+            fillColor: ColorTokens.night900,
+            contentPadding: const EdgeInsets.symmetric(
+                horizontal: SpaceTokens.s16, vertical: SpaceTokens.s16),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
+              borderRadius: RadiusTokens.smAll,
+              borderSide: BorderSide(color: ColorTokens.night800),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: RadiusTokens.smAll,
+              borderSide: BorderSide(color: ColorTokens.night800),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: RadiusTokens.smAll,
+              borderSide: BorderSide(color: ColorTokens.lime500, width: 1.5),
+            ),
           ),
           textCapitalization: TextCapitalization.sentences,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => onFinish(),
         ),
-        const SizedBox(height: 20),
-        // Trial badge
+        const SizedBox(height: SpaceTokens.s16),
+        // Trial badge — no emoji, text-only
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+              horizontal: SpaceTokens.s16, vertical: SpaceTokens.s12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            color: ColorTokens.lime500.withValues(alpha: 0.08),
+            borderRadius: RadiusTokens.smAll,
+            border: Border.all(
+                color: ColorTokens.lime500.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
-              const Text('🚀', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 12),
+              Icon(Icons.workspace_premium_outlined,
+                  size: 18, color: ColorTokens.lime500),
+              const SizedBox(width: SpaceTokens.s12),
               Expanded(
                 child: Text(
                   trialText,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyles.bodySm(context)
+                      .copyWith(color: ColorTokens.ink500),
                 ),
               ),
             ],
           ),
         ),
         const Spacer(flex: 3),
-        _WhiteButton(
-          text: ctaText,
-          onPressed: onFinish,
-          color: const Color(0xFF4C1D95),
-        ),
-        const SizedBox(height: 8),
+        _OnboardingCTA(text: ctaText, onPressed: onFinish),
+        const SizedBox(height: SpaceTokens.s8),
         Center(
           child: Text(
             noCardText,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 12,
-            ),
+            style:
+                TextStyles.bodySm(context).copyWith(color: ColorTokens.ink700),
           ),
         ),
-        const SizedBox(height: 48),
+        const SizedBox(height: SpaceTokens.s48),
       ],
     );
   }
 }
 
-// ─── Shared button ──────────────────────────────────────────────
+// ─── Shared CTA button ────────────────────────────────────────────────────────
+// Dark-mode primary: lime fill, ink label.
 
-class _WhiteButton extends StatelessWidget {
+class _OnboardingCTA extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
-  final Color color;
 
-  const _WhiteButton({
-    required this.text,
-    required this.onPressed,
-    this.color = const Color(0xFF1E40AF),
-  });
+  const _OnboardingCTA({required this.text, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+      child: GestureDetector(
+        onTap: onPressed,
+        child: AnimatedContainer(
+          duration: MotionTokens.duration,
+          curve: MotionTokens.curve,
+          padding: const EdgeInsets.symmetric(vertical: SpaceTokens.s16),
+          decoration: BoxDecoration(
+            color: ColorTokens.lime500,
+            borderRadius: RadiusTokens.smAll,
           ),
-          elevation: 0,
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          child: Center(
+            child: Text(
+              text,
+              style: TextStyles.bodyMd(context).copyWith(
+                color: ColorTokens.ink900,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ),
       ),
     );
