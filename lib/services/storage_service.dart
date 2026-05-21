@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_models.dart';
+import '../features/family/domain/models/crm_extras.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();
@@ -101,6 +102,40 @@ class StorageService {
 
   Future<void> saveContacts(List<Contact> contacts) =>
       prefs.setString('contacts', jsonEncode(contacts.map((c) => c.toJson()).toList()));
+
+  // ─── CRM Extras (local-only, Week 4 Phase A) ──────────────────
+  static const _crmExtrasKey = 'crm_extras_v1';
+
+  /// Returns all locally-stored CRM extras, keyed by contactId.
+  Map<String, CrmExtras> getCrmExtras() {
+    final raw = prefs.getString(_crmExtrasKey);
+    if (raw == null) return {};
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    return map.map(
+      (k, v) => MapEntry(k, CrmExtras.fromJson(v as Map<String, dynamic>)),
+    );
+  }
+
+  /// Persists the full CRM extras map.
+  Future<void> saveCrmExtras(Map<String, CrmExtras> extras) =>
+      prefs.setString(
+        _crmExtrasKey,
+        jsonEncode(extras.map((k, v) => MapEntry(k, v.toJson()))),
+      );
+
+  /// Read-modify-write: inserts or replaces a single CrmExtras entry.
+  Future<void> upsertCrmExtra(CrmExtras extra) async {
+    final all = getCrmExtras();
+    all[extra.contactId] = extra;
+    await saveCrmExtras(all);
+  }
+
+  /// Removes the CRM extras for a deleted contact.
+  Future<void> removeCrmExtra(String contactId) async {
+    final all = getCrmExtras();
+    all.remove(contactId);
+    await saveCrmExtras(all);
+  }
 
   // ─── Standup Logs ─────────────────────────────────────────────
   List<StandupLog> getStandupLogs() {

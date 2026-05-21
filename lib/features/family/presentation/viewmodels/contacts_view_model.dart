@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/contact.dart';
+import '../../domain/models/crm_extras.dart';
 import '../../../../services/storage_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/google_calendar_service.dart';
@@ -22,6 +23,7 @@ class ContactsViewModel extends ChangeNotifier {
   List<Contact> _contacts = [];
   bool _loading = false;
   bool _importing = false;
+  Map<String, CrmExtras> _crmExtras = {};
 
   List<Contact> get contacts => _contacts;
   bool get loading => _loading;
@@ -53,6 +55,9 @@ class ContactsViewModel extends ChangeNotifier {
         ..sort((a, b) => a.daysUntilBirthday.compareTo(b.daysUntilBirthday));
     }
 
+    // Load local CRM extras (always local in Phase A)
+    _crmExtras = _storage.getCrmExtras();
+
     _loading = false;
     notifyListeners();
 
@@ -61,6 +66,55 @@ class ContactsViewModel extends ChangeNotifier {
   }
 
   void reload() => _loadContacts();
+
+  // ── CRM Extras ────────────────────────────────────────────────
+
+  /// Returns existing extras for [c], or a default "none-stage" record.
+  CrmExtras extrasFor(Contact c) =>
+      _crmExtras[c.id] ??
+      CrmExtras(contactId: c.id, dealStage: 'none');
+
+  /// Upserts a CrmExtras record; persists and notifies.
+  Future<void> upsertExtras(CrmExtras e) async {
+    _crmExtras[e.contactId] = e;
+    await _storage.upsertCrmExtra(e);
+    notifyListeners();
+  }
+
+  /// Convenience: update only the deal stage for a contact.
+  Future<void> updateStage(Contact c, String stage) async {
+    final existing = extrasFor(c);
+    await upsertExtras(existing.copyWith(dealStage: stage));
+  }
+
+  /// Convenience: update next step text and optional date.
+  Future<void> updateNextStep(
+    Contact c,
+    String step,
+    DateTime? date,
+  ) async {
+    final existing = extrasFor(c);
+    await upsertExtras(
+      existing.copyWith(nextStep: step, nextStepDate: date),
+    );
+  }
+
+  /// Returns contacts whose CRM stage matches [stage].
+  Iterable<Contact> contactsByStage(String stage) => _contacts.where(
+        (c) => (_crmExtras[c.id]?.dealStage ?? 'none') == stage,
+      );
+
+  /// Sum of dealAmount for all contacts in active stages (not won/lost/none).
+  double get pipelineValue => _contacts.fold(0.0, (sum, c) {
+        final extras = _crmExtras[c.id];
+        if (extras == null || !extras.isActive) return sum;
+        return sum + (extras.dealAmount ?? 0.0);
+      });
+
+  /// Count of contacts in active pipeline stages.
+  int get activeContactCount => _contacts
+      .where((c) => (_crmExtras[c.id]?.isActive ?? false))
+      .length;
 
   Future<String> importFromGoogle() async {
     if (!_calService.isSignedIn) return 'connect_google';
@@ -150,10 +204,16 @@ class ContactsViewModel extends ChangeNotifier {
 
   Future<void> deleteContact(Contact contact) async {
     _contacts.remove(contact);
+    _crmExtras.remove(contact.id);
     await _storage.saveContacts(_contacts);
+    await _storage.removeCrmExtra(contact.id);
     notifyListeners();
     if (_useDb) {
-      try { await ApiService.delete('contacts', contact.id); } catch (e) { debugPrint('API delete contact failed: $e'); }
+      try {
+        await ApiService.delete('contacts', contact.id);
+      } catch (e) {
+        debugPrint('API delete contact failed: $e');
+      }
     }
   }
 }

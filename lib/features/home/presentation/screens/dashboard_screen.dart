@@ -5,7 +5,7 @@
 // Navigation choice: Option B — 5 tabs.
 //   0: Home (Dashboard)
 //   1: Tasks  → WorkHubScreen
-//   2: CRM    → ContactsScreen
+//   2: CRM    → CrmScreen (Week 4 Phase A)
 //   3: Calendar → CalendarScreen
 //   4: Money  → FinanceDashboardScreen
 //
@@ -43,7 +43,9 @@ import '../../../finance/presentation/viewmodels/finance_view_model.dart';
 // Nav-destination screens (internals untouched)
 // work_hub_screen.dart is kept intact — reachable via deep-link / future nav.
 import '../../../work/presentation/screens/tasks_screen.dart';
-import '../../../family/presentation/screens/contacts_screen.dart';
+import '../../../family/presentation/screens/crm_screen.dart';
+import '../../../family/presentation/screens/crm_detail_screen.dart';
+import '../../../family/domain/models/crm_extras.dart';
 import '../../../settings/presentation/screens/calendar_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../finance/presentation/screens/finance_dashboard_screen.dart';
@@ -75,7 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // from the More section but is no longer in the primary nav.
   static const _tabScreens = <Widget>[
     TasksScreen(),
-    ContactsScreen(),
+    CrmScreen(),       // Week 4 Phase A — Attio-style pipeline table
     CalendarScreen(),
     FinanceDashboardScreen(),
   ];
@@ -487,7 +489,16 @@ class _PipelineSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = QColors.of(context);
     final vm = context.watch<ContactsViewModel>();
-    final contacts = vm.contacts;
+
+    // Active = prospect + discovery + proposal + negotiation
+    final activeContacts = [
+      ...vm.contactsByStage('proposal'),
+      ...vm.contactsByStage('discovery'),
+      ...vm.contactsByStage('negotiation'),
+      ...vm.contactsByStage('prospect'),
+    ];
+    final activeCount = vm.activeContactCount;
+    final pipelineValue = vm.pipelineValue;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,7 +508,7 @@ class _PipelineSection extends StatelessWidget {
             SectionLabel('Pipeline', bottomPadding: 0),
             const Spacer(),
             MonoText(
-              contacts.isEmpty ? '0 active' : '${contacts.length} active',
+              '$activeCount active',
               size: 12,
               color: c.textSecondary,
             ),
@@ -505,7 +516,7 @@ class _PipelineSection extends StatelessWidget {
         ),
         const SizedBox(height: SpaceTokens.s12),
 
-        if (contacts.isEmpty)
+        if (activeContacts.isEmpty)
           AppCard(
             dense: true,
             child: Center(
@@ -521,99 +532,150 @@ class _PipelineSection extends StatelessWidget {
             height: 156,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: contacts.length,
-              separatorBuilder: (_, __) => const SizedBox(width: SpaceTokens.s12),
-              itemBuilder: (context, i) => _PipelineCard(contact: contacts[i]),
+              itemCount: activeContacts.length,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(width: SpaceTokens.s12),
+              itemBuilder: (context, i) {
+                final contact = activeContacts[i];
+                final extras = vm.extrasFor(contact);
+                return _PipelineCard(
+                  contact: contact,
+                  extras: extras,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CrmDetailScreen(contact: contact),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
+        if (pipelineValue > 0) ...[
+          const SizedBox(height: SpaceTokens.s8),
+          Row(
+            children: [
+              Text(
+                'Pipeline total',
+                style: TextStyles.bodySm(context)
+                    .copyWith(color: c.textSecondary),
+              ),
+              const SizedBox(width: SpaceTokens.s8),
+              MonoText(
+                '\$${pipelineValue.toStringAsFixed(0)}',
+                size: 13,
+                weight: FontWeight.w500,
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
 }
 
 class _PipelineCard extends StatelessWidget {
-  const _PipelineCard({required this.contact});
+  const _PipelineCard({
+    required this.contact,
+    required this.extras,
+    required this.onTap,
+  });
 
   final Contact contact;
+  final CrmExtras extras;
+  final VoidCallback onTap;
 
-  String get _stageLabel {
-    switch (contact.relationship.toLowerCase()) {
-      case 'client':
-        return 'CLIENT';
+  String _stageLabelShort(String stage) {
+    switch (stage) {
       case 'prospect':
         return 'PROSPECT';
-      case 'partner':
-        return 'PARTNER';
-      case 'investor':
-        return 'INVESTOR';
+      case 'discovery':
+        return 'DISCOVERY';
+      case 'proposal':
+        return 'PROPOSAL';
+      case 'negotiation':
+        return 'NEGOTIATION';
       default:
-        return contact.relationship.toUpperCase();
+        return stage.toUpperCase();
     }
   }
 
-  String get _nextAction {
-    final days = contact.daysSinceContact;
-    if (days == -1) return 'reach out';
-    if (days == 0) return 'contacted today';
-    if (days <= 7) return 'follow up';
-    return 'overdue ${days}d';
+  String _amountLabel() {
+    if (extras.dealAmount == null) return '';
+    final fmt =
+        NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+    return fmt.format(extras.dealAmount);
   }
 
   @override
   Widget build(BuildContext context) {
     final c = QColors.of(context);
+    final nextStep = extras.nextStep;
+    final amount = _amountLabel();
 
-    return SizedBox(
-      width: 168,
-      child: AppCard(
-        dense: true,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Contact name
-            Text(
-              contact.name,
-              style: TextStyles.bodyLg(context).copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-
-            // Stage label
-            Text(
-              _stageLabel,
-              style: TextStyles.label(context).copyWith(
-                color: c.textSecondary,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const Spacer(),
-
-            // Hairline divider
-            Divider(height: 1, thickness: 1, color: c.border),
-            const SizedBox(height: SpaceTokens.s8),
-
-            // Next action row
-            Row(
-              children: [
-                Icon(Icons.arrow_forward, size: 12, color: c.accent),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    _nextAction,
-                    style: TextStyles.bodySm(context).copyWith(
-                      color: c.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 168,
+        child: AppCard(
+          dense: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Contact name
+              Text(
+                contact.name,
+                style: TextStyles.bodyLg(context).copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+
+              // Stage label
+              Text(
+                _stageLabelShort(extras.dealStage),
+                style: TextStyles.label(context).copyWith(
+                  color: c.textSecondary,
+                  letterSpacing: 0.8,
+                ),
+              ),
+
+              if (amount.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                MonoText(amount, size: 13, weight: FontWeight.w500),
               ],
-            ),
-          ],
+
+              const Spacer(),
+
+              // Hairline divider
+              Divider(height: 1, thickness: 1, color: c.border),
+              const SizedBox(height: SpaceTokens.s8),
+
+              // Next step row
+              Row(
+                children: [
+                  Icon(Icons.arrow_forward, size: 12, color: c.accent),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      nextStep != null && nextStep.isNotEmpty
+                          ? nextStep
+                          : 'No next step',
+                      style: TextStyles.bodySm(context).copyWith(
+                        color: c.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
